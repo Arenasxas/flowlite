@@ -36,7 +36,7 @@ jobs:
       - name: Huella de la firma (para Google Cloud)
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk FlowLite.apk
-          keytool -printcert -jarfile FlowLite.apk | grep -E "SHA1|SHA256"
+          "$(ls -d $ANDROID_HOME/build-tools/* | tail -1)/apksigner" verify --print-certs FlowLite.apk | grep -E "SHA-1|SHA-256"
       - uses: actions/upload-artifact@v4
         with:
           name: lint
