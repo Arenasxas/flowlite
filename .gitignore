@@ -1,0 +1,21 @@
+# claves y datos personales: nunca al repo
+.env
+*.env
+history.db
+state.json
+Apuntes/
+pendientes/
+notas_rapidas.txt
+*.keystore
+*.jks
+# entorno y compilados
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+android/.gradle/
+android/app/build/
+android/local.properties
+node_modules/

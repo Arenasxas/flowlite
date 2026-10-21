@@ -1,0 +1,59 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>%%TITLE%%</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--ink:#1f2328;--violet:#6a1b9a;--line:#e8e4f5;--paper:#fffdf8}
+body{margin:0;background:#ece9e2;color:var(--ink);font:16px/1.65 "Segoe UI",system-ui,sans-serif}
+.page{max-width:820px;margin:24px auto;padding:28px 260px 40px 72px;background:var(--paper);position:relative;
+  box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px;
+  background-image:linear-gradient(90deg,transparent 52px,#f2b8b8 52px,#f2b8b8 54px,transparent 54px)}
+h1{font-size:30px;margin:0 0 2px;color:var(--violet)} h1+p em{color:#777}
+h2{margin-top:36px;padding:2px 10px;background:#f3e5f5;border-left:6px solid var(--violet);border-radius:4px;font-size:21px}
+h3{color:var(--violet);margin-top:24px;border-bottom:1px dashed #c9a6d8;display:inline-block}
+strong{color:#4a148c} li{margin:3px 0} code{background:#f3e5f5;padding:1px 4px;border-radius:4px}
+mark{background:linear-gradient(transparent 45%,#fff176 45%);padding:0 2px}
+.ar{color:#e65100;font-weight:800;padding:0 2px}
+aside.margin{float:right;clear:right;width:205px;margin:-4px -240px 8px 0;font:15px/1.35 "Segoe Print","Comic Sans MS",cursive;
+  color:#1565c0;transform:rotate(-1.5deg);position:relative;padding-left:4px}
+aside.margin::before{content:"⟵";position:absolute;left:-26px;top:0;color:#1565c0;font-size:20px}
+.formula{border:2px solid var(--violet);border-radius:12px;background:#faf5ff;padding:10px 16px;margin:16px 0;clear:left}
+.f-name{font-weight:700;color:var(--violet)}
+.f-eq{font:600 20px/1.4 Cambria,"Cambria Math",Georgia,serif;text-align:center;background:#fff;border:1px dashed #c9a6d8;border-radius:8px;padding:10px;margin:8px 0}
+.f-row{margin:3px 0} .f-row span{font-weight:700;color:var(--violet);margin-right:6px}
+.box{border-radius:10px;padding:8px 14px;margin:14px 0;border-left:6px solid} .box-t{font-weight:700;margin-bottom:2px}
+.box p,.box ul{margin:4px 0}
+.box.importante{background:#ffebee;border-color:#e53935} .box.ojo{background:#fff8e1;border-color:#ffb300}
+.box.ejemplo{background:#e8f5e9;border-color:#43a047} .box.tip{background:#e3f2fd;border-color:#1e88e5}
+.box.duda{background:#eceff1;border-color:#78909c} .box.resumen{background:#f3e5f5;border-color:var(--violet)}
+.flujo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0}
+.node{display:inline-block;background:#fff;border:2px solid #ba68c8;border-radius:8px;padding:3px 10px;font-weight:600}
+.mapa ul{list-style:none;padding-left:26px;margin:0;position:relative}
+.mapa>ul{padding-left:0} .mapa li{position:relative;margin:8px 0;padding-left:6px}
+.mapa ul ul li::before{content:"";position:absolute;left:-20px;top:-10px;width:18px;height:24px;
+  border-left:2px solid #ba68c8;border-bottom:2px solid #ba68c8;border-bottom-left-radius:8px}
+.mapa>ul>li>.node{background:var(--violet);color:#fff;border-color:var(--violet);font-size:17px}
+table{border-collapse:collapse;margin:12px 0;width:100%} th,td{border:1px solid #d6c7e0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#f3e5f5}
+details.q{border:2px solid #d6c7e0;border-radius:10px;margin:10px 0;background:#fff}
+details.q summary{cursor:pointer;padding:10px 14px;font-weight:600;list-style:none}
+details.q summary::after{content:"  · tocá para ver la respuesta";color:#999;font-weight:400;font-size:13px}
+details.q[open] summary::after{content:""} details.q .a{padding:0 14px 8px;border-top:1px dashed #d6c7e0}
+li.task{list-style:none;margin-left:-20px} li.task input{transform:scale(1.25);margin-right:6px;accent-color:var(--violet)}
+details.tr-all{margin-top:40px;border-top:1px solid #ddd;padding-top:12px} details.tr-all summary{cursor:pointer;font-weight:600}
+.tr p{margin:4px 0;font-size:14px} .tr span{color:#888;font-family:Consolas,monospace;margin-right:8px}
+.foot{color:#999;font-size:12px;margin-top:24px}
+figure{margin:16px 0;display:inline-block;max-width:100%;box-sizing:border-box;background:#fff;padding:8px 8px 4px;box-shadow:0 2px 8px rgba(0,0,0,.18);
+  transform:rotate(-.6deg)} figure img{max-width:100%;display:block;cursor:zoom-in}
+figcaption{font:14px "Segoe Print","Comic Sans MS",cursive;color:#555;padding:4px 2px}
+@media (max-width:1000px){.page{padding:20px 18px 32px 64px;margin:0} aside.margin{float:none;width:auto;margin:4px 0 10px 18px;transform:none}}
+@media print{body{background:#fff} .page{box-shadow:none;margin:0} details.tr-all{display:none}}
+</style></head><body><div class="page">
+%%BODY%%
+<details class="tr-all"><summary>Transcripción completa</summary><div class="tr">%%TRANSCRIPT%%</div></details>
+<p class="foot">Generado por FlowLite %%VERSION%% con IA a partir de la transcripción automática: revisalo antes de estudiar de acá.</p>
+</div><script>
+document.querySelectorAll("li.task input").forEach(function(c,i){var k="flowlite:"+location.pathname+":"+i;
+  try{var v=localStorage.getItem(k);if(v!==null)c.checked=v==="1";}catch(e){}
+  c.addEventListener("change",function(){try{localStorage.setItem(k,c.checked?"1":"0");}catch(e){}});});
+document.querySelectorAll("figure img").forEach(function(im){im.addEventListener("click",function(){window.open(im.src);});});
+window.addEventListener("beforeprint",function(){document.querySelectorAll("details.q").forEach(function(d){d.open=true;});});
+</script></body></html>

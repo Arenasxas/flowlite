@@ -1,0 +1,51 @@
+FlowLite — dictado por voz y apuntes de clases para Windows
+===========================================================
+
+Hablás y el texto aparece donde está el cursor (WhatsApp, Word, mail…), con puntuación.
+En clases o reuniones virtuales (Meet, Zoom, Teams) graba, transcribe y te arma apuntes tipo cuaderno.
+
+INSTALAR (una sola vez)
+1. Descomprimí el .zip en C:\FlowLite (no en Descargas, Documentos ni Escritorio: Windows a veces
+   bloquea esas carpetas y ahí se guardan tu clave, tu vocabulario y tus apuntes).
+2. Sacá tu clave de Groq en https://console.groq.com/keys → "Create API Key" (empieza con gsk_).
+3. Abrí FlowLite.exe. Si Windows muestra "Windows protegió su PC": "Más información" → "Ejecutar de todas formas"
+   (pasa porque el programa no está firmado por una empresa).
+4. Pegá la clave (si está mal, te avisa). Se crea un acceso directo en el escritorio.
+5. Opcional, para mejores apuntes: tocá la bolita → ⚙️ Ajustes → "Motor de apuntes" → pegá una clave de Gemini
+   (gratis en https://aistudio.google.com/apikey).
+
+DICTAR
+- Mantené Ctrl izq + Alt izq, hablá, soltá. 2 toques = graba sin sostener (otro toque lo corta). 3 toques = pausa.
+- + Shift = modo comando: seleccioná un texto y decí qué hacer ("pasalo a formal", "traducilo al inglés").
+- Podés dictar puntuación ("coma", "punto y aparte") y listas; si te corregís ("a las 5, no, a las 6") queda lo último.
+- Si no había dónde escribir, queda copiado: pegalo con Ctrl+V.
+
+EL PANEL: tocá la bolita (clic derecho = botones rápidos; también desde el ícono al lado del reloj)
+- 🕘 Historial: todo lo dictado, si se pegó o falló (↻ Reintentar), buscador y tus números.
+- 📝 Apuntes: empezar una clase, tus clases por materia, "Preguntale a tus clases" y
+  "📚 Resumen para el parcial" (une todas las clases de una materia).
+- ✨ Personal: vocabulario (palabras que tiene que escribir bien) y atajos de voz ("mi mail" → tu mail).
+- 🗒 Notas rápidas: anotador que se guarda solo.
+- ⚙️ Ajustes: tecla para dictar, idioma, pulido con IA, sonidos, bolita, botones rápidos, aviso de clases,
+  claves e inicio con Windows.
+
+APUNTES DE CLASES
+- Panel → 📝 Apuntes → Tomar apuntes (o "Empezar ahora" en el aviso que aparece al entrar a Meet/Zoom/Teams).
+  Elegí qué grabar: audio de la PC (clase virtual), micrófono (presencial) o ambos (con auriculares).
+- Durante la clase: ⭐ Importante · ❓ No entendí · 📸 Captura (diapositiva o pizarrón) · ✨ Ayuda
+  ("¿Qué me perdí?" o una pregunta para el profe). Lo que escribas en "Mis notas" va al margen del tema.
+- Al terminar se abren los apuntes en el navegador: resumen, mapa, fichas de fórmulas, machete, lo que entra,
+  tareas, autoevaluación y la transcripción. PDF: Ctrl+P → "Guardar como PDF".
+- Quedan en C:\FlowLite\Apuntes. Si se cortó internet, el audio queda guardado: Panel → Apuntes → Rehacer.
+- Avisá cuando grabás si corresponde: grabar sin permiso puede no estar permitido.
+
+ACTUALIZAR
+- Clic derecho en el ícono al lado del reloj → Salir, y descomprimí el .zip nuevo encima de C:\FlowLite.
+  Tu clave, vocabulario, historial y apuntes se mantienen.
+
+PROBLEMAS
+- No escribe nada: el micrófono tiene que ser el predeterminado de Windows (Configuración → Sistema → Sonido).
+- Apuntes vacíos con "audio de la PC": la clase tiene que sonar por los parlantes o auriculares predeterminados.
+- El antivirus lo bloquea (escucha el teclado para detectar Ctrl+Alt): agregá la carpeta como excepción,
+  solo si recibiste el .zip directamente de quien lo armó.
+- Errores: Panel → Ajustes → "Registro de errores", y mandale ese archivo a quien te lo pasó.
