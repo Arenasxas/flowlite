@@ -137,6 +137,7 @@ const server = createServer((req, res) => {
     };
     if (p.startsWith("/mock/")) log.push({ method: req.method, path: p, size: buf.length });
     try {
+      if (p === "/mock/drivefiles") return send(200, [...files.values()].map(({ id, name, parents, data }) => ({ id, name, parent: parents[0], size: data ? data.length : null })));
       if (p.startsWith("/mock/groq") || p.startsWith("/mock/gemini")) {
         let body = {};
         const ct = req.headers["content-type"] || "";
@@ -168,7 +169,6 @@ const server = createServer((req, res) => {
         return send(404, { error: "drive no simulado: " + req.method + " " + dp });
       }
       if (p === "/mock/log") return send(200, log);
-      if (p === "/mock/drivefiles") return send(200, [...files.values()].map(({ id, name, parents, data }) => ({ id, name, parent: parents[0], size: data ? data.length : null })));
       // archivos de la app
       let file = p.startsWith("/test-audio/") ? join(FIX, p.slice(12)) : p.startsWith("/shared/") ? join(ROOT, p) : join(ROOT, "mobile", p);
       if (existsSync(file) && statSync(file).isDirectory()) file = join(file, "index.html");

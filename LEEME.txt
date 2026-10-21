@@ -2,7 +2,8 @@ FlowLite — dictado por voz y apuntes de clases para Windows
 ===========================================================
 
 Hablás y el texto aparece donde está el cursor (WhatsApp, Word, mail…), con puntuación.
-En clases o reuniones virtuales (Meet, Zoom, Teams) graba, transcribe y te arma apuntes tipo cuaderno.
+En clases, reuniones y llamadas (Meet, Zoom, Teams, WhatsApp, Discord…) graba, transcribe y te arma apuntes
+tipo cuaderno. También en el celular: https://arenasxas.github.io/flowlite/
 
 INSTALAR (una sola vez)
 1. Descomprimí el .zip en C:\FlowLite (no en Descargas, Documentos ni Escritorio: Windows a veces
@@ -29,14 +30,28 @@ EL PANEL: tocá la bolita (clic derecho = botones rápidos; también desde el í
 - ⚙️ Ajustes: tecla para dictar, idioma, pulido con IA, sonidos, bolita, botones rápidos, aviso de clases,
   claves e inicio con Windows.
 
-APUNTES DE CLASES
-- Panel → 📝 Apuntes → Tomar apuntes (o "Empezar ahora" en el aviso que aparece al entrar a Meet/Zoom/Teams).
+APUNTES DE CLASES, REUNIONES Y LLAMADAS
+- Panel → 📝 Apuntes → Tomar apuntes (o "Empezar ahora" en el aviso que aparece al entrar a Meet/Zoom/Teams
+  o cuando una app como WhatsApp o Discord usa el micrófono).
+- Tipo de apunte: Clase (cuaderno para estudiar), Reunión de trabajo (decisiones y próximos pasos),
+  Llamada (datos, montos, fechas y lo que tenés que hacer) o Charla/webinar. Se recuerda por materia.
   Elegí qué grabar: audio de la PC (clase virtual), micrófono (presencial) o ambos (con auriculares).
 - Durante la clase: ⭐ Importante · ❓ No entendí · 📸 Captura (diapositiva o pizarrón) · ✨ Ayuda
   ("¿Qué me perdí?" o una pregunta para el profe). Lo que escribas en "Mis notas" va al margen del tema.
 - Al terminar se abren los apuntes en el navegador: resumen, mapa, fichas de fórmulas, machete, lo que entra,
-  tareas, autoevaluación y la transcripción. PDF: Ctrl+P → "Guardar como PDF".
-- Quedan en C:\FlowLite\Apuntes. Si se cortó internet, el audio queda guardado: Panel → Apuntes → Rehacer.
+  tareas, autoevaluación y la transcripción. Con Gemini, una segunda pasada revisa que no falte nada.
+  También se guarda Apuntes.pdf (para leer en el celular).
+- Quedan en C:\FlowLite\Apuntes (o en Google Drive: ⚙️ Ajustes → "Carpeta de apuntes" → Usar Google Drive).
+  Si se cortó internet, el audio queda guardado: Panel → Apuntes → Rehacer. Si FlowLite se cerró en medio de
+  una clase, al abrirlo te avisa y te ofrece armar los apuntes.
+
+EN EL CELULAR
+- Abrí https://arenasxas.github.io/flowlite/ y "Agregar a pantalla de inicio". Pegá tus claves en Ajustes.
+- Graba clases presenciales, tus apuntes, repaso con tarjetas y dictado. Con Google Drive ves las clases de la PC.
+- Android: la app FlowLite (https://github.com/Arenasxas/flowlite/releases/latest) suma el teclado para dictar
+  en cualquier app y graba videos o clases grabadas que mirás en el celular.
+- Las llamadas y videollamadas en vivo del mismo celular no se pueden grabar (ni Android ni iPhone lo permiten):
+  grabalas con FlowLite en la PC.
 - Avisá cuando grabás si corresponde: grabar sin permiso puede no estar permitido.
 
 ACTUALIZAR
