@@ -370,11 +370,12 @@ function renderDictar() {
   view.replaceChildren(h(`
     <button class="hold" id="hold"><span>🎙</span>Mantené apretado y hablá</button>
     <div class="card hidden" id="out"><div id="otext"></div><button class="btn primary big" id="copy">📋 Copiar</button></div>
-    <div class="card"><h2>Dictar en cualquier app</h2><p class="muted">${android() ? "Activá el «Teclado FlowLite» en Ajustes de Android → Teclados: tiene el botón para dictar en WhatsApp, mail o lo que sea." :
+    <div class="card"><h2>Dictar en cualquier app</h2><p class="muted">${android() ? 'Activá el «Teclado FlowLite»: tiene el botón para dictar en WhatsApp, mail o lo que sea. Si hay texto seleccionado, lo que digas es una orden sobre ese texto («hacelo más formal»). <button class="btn" id="kbset" style="margin-top:8px">⌨️ Activar el teclado</button>' :
       /iphone|ipad/i.test(navigator.userAgent) ? `En iPhone: armá el Atajo «FlowLite Dictar» y activalo tocando dos veces la parte de atrás del celular. <a href="${C.iphoneGuide}" target="_blank" style="color:var(--accent2)">Ver cómo</a>.` :
       `En Android: instalá la app FlowLite y usá su teclado. <a href="${C.androidApk}" target="_blank" style="color:var(--accent2)">Bajar la app</a>.`}</p></div>
     <div class="card"><h2>Notas rápidas</h2><textarea id="quick" placeholder="Se guarda sola."></textarea></div>
     <div class="card"><h2>Últimos dictados</h2><div id="hist">${hist.length ? "" : '<p class="muted">Todavía nada.</p>'}</div></div>`));
+  if ($("#kbset")) $("#kbset").onclick = () => window.FlowLiteAndroid.openKeyboardSettings();
   for (const d of hist.slice(0, 20)) {
     const p = h('<p style="margin:6px 0"></p>').firstElementChild;
     p.textContent = d.text;
@@ -455,9 +456,12 @@ function renderAjustes() {
       "Falta configurar el acceso a Drive (una vez, ver docs/GUIA.md → «Google Cloud»).";
   $("#dconn").onclick = async () => { try { await drive.connect(); renderAjustes(); toast("☁️ Google Drive conectado"); } catch (e) { toast(e.message, 6000); } };
   $("#lang").value = store.get("language", "es");
-  $("#lang").onchange = (e) => store.set("language", e.target.value);
+  // el teclado de Android usa el mismo idioma y vocabulario
+  const toKeyboard = () => window.FlowLiteAndroid && window.FlowLiteAndroid.saveSettings &&
+    window.FlowLiteAndroid.saveSettings(store.get("language", "es"), store.get("vocab", []).join(", "));
+  $("#lang").onchange = (e) => { store.set("language", e.target.value); toKeyboard(); };
   $("#vocab").value = store.get("vocab", []).join(", ");
-  $("#vocab").onchange = (e) => store.set("vocab", e.target.value.split(",").map((s) => s.trim()).filter(Boolean));
+  $("#vocab").onchange = (e) => { store.set("vocab", e.target.value.split(",").map((s) => s.trim()).filter(Boolean)); toKeyboard(); };
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   $("#inst").textContent = standalone ? "✅ Ya está instalada." : /iphone|ipad/i.test(navigator.userAgent) ?
     "En Safari: tocá Compartir (el cuadrado con la flecha) → «Agregar a inicio»." : "Instalala para usarla como una app, sin abrir el navegador.";

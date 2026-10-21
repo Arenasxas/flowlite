@@ -6,7 +6,10 @@ const C = () => window.FLOWLITE_CONFIG;
 let token = null, tokenExp = 0;
 const FOLDER = "application/vnd.google-apps.folder";
 
-export function configured() { return !!(C().googleClientId || C().mock); }
+// En la app de Android el inicio de sesión de Google va por el sistema (Google no deja hacerlo dentro de un WebView)
+const nativeAuth = () => window.FlowLiteAndroid && window.FlowLiteAndroid.requestDriveToken;
+
+export function configured() { return !!(C().googleClientId || C().mock || nativeAuth()); }
 export function connected() { return C().mock ? store.get("driveOn", false) : !!token && Date.now() < tokenExp; }
 
 function loadGis() {
@@ -23,6 +26,15 @@ function loadGis() {
 /** Pide permiso a Google (una ventanita). En modo prueba, no hace falta. */
 export async function connect(interactive = true) {
   if (C().mock) { store.set("driveOn", true); token = "mock"; tokenExp = Date.now() + 3600e3; return; }
+  if (nativeAuth()) {
+    return new Promise((ok, fail) => {
+      window.flowliteOnDriveToken = (t, err) => {
+        if (!t) return fail(new Error("Drive: " + (err || "sin permiso")));
+        token = t; tokenExp = Date.now() + 50 * 60e3; store.set("driveOn", true); ok();
+      };
+      window.FlowLiteAndroid.requestDriveToken();
+    });
+  }
   if (!C().googleClientId) throw new Error("Falta configurar el ID de cliente de Google (ver la guía).");
   await loadGis();
   await new Promise((ok, fail) => {
