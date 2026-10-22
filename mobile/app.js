@@ -399,7 +399,8 @@ function renderDictar() {
     btn.classList.remove("on"); btn.lastChild.textContent = "⏳ Transcribiendo…";
     try {
       const blob = await r.stop();
-      let text = (await ai.transcribe(blob, { prompt: store.get("vocab", []).join(", ") })).text.trim();
+      let text = (await ai.transcribe(blob, { prompt: ai.dictationPrompt() })).text.trim();
+      text = ai.promptEcho(text) ? "" : ai.fixTech(text);
       if (text.split(/\s+/).length > 3) text = await ai.polish(text).catch(() => text);
       if (text) {
         store.set("dictados", [{ text, at: Date.now() }, ...hist].slice(0, 50));

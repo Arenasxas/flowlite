@@ -105,6 +105,7 @@ Del celular (Node 20 o más nuevo):
 
 | Prueba | Qué hace |
 |---|---|
+| `node tests/test_fix_tech.mjs` | Los reemplazos de nombres de IA dan igual que en la PC y no tocan palabras comunes |
 | `node tests/parity.mjs` | El cuaderno de JS da idéntico al de Python. Antes corre `tests/parity_corpus.py` |
 | `node tests/test_real_mobile_ai.mjs C:\FlowLite clase.wav` | La IA del celular con claves reales |
 | `node tests/mock_server.mjs 8765 <carpeta>` | Sirve la app con Groq, Gemini y Drive simulados. Abrir `http://localhost:8765/?mock=1&seed=1` |
@@ -180,6 +181,12 @@ Con Google Drive, los apuntes aparecen solos en el celular para leerlos y repasa
 - **Sin transparencias ni sombras en Qt.** En Windows dejaban restos y parpadeos. Se usan bordes redondeados nativos (`native_round`).
 - **Bug del BOM.** El `vocabulary.json` original venía con BOM (una marca invisible al principio del archivo) y el programa no lo podía leer. Ahora se abre con `encoding="utf-8-sig"`.
 - **PDF con Chrome sin ventana** (y Edge si no hay Chrome), con un perfil temporal. Edge falla en silencio cuando tiene una actualización pendiente.
+- **Vocabulario de IA y tecnología** (`prompts.json → tech_vocab` y `tech_fixes`). Funciona en tres capas:
+  - **`tech_vocab`:** unos 60 nombres (Claude, Gemini, MCP, skill, n8n…). Van en la ayuda de Whisper, que tiene ~800 caracteres; por eso no son más. También van en el pulido.
+  - **`tech_fixes`:** reemplazos fijos de errores típicos («Cloud Code» → «Claude Code», «eme ce pe» → «MCP»). Se aplican en `fix_tech` (PC), `fixTech` (web) y `Groq.fixTech` (Android).
+  - **Eco:** si Whisper devuelve solo la lista de la ayuda, se descarta (`prompt_echo`).
+  - **Resultado:** con audio real, 18 de 20 nombres bien, contra 13 de 20 sin la lista (`tests/test_real_vocab.py`). Pedirle al pulido que los corrija no sirvió (0 de 6) y gastaba el límite por minuto de Groq.
+  - **Para sumar uno:** agregarlo a `tech_vocab`. Si Whisper lo escribe siempre igual de mal, sumar el par a `tech_fixes` con una prueba en `test_logic.py`, y revisar que no toque palabras comunes del español.
 - **Autocorrecciones del dictado.** Whisper escribe «a las 5 no a las 6» sin comas. La regla de `polish` aclara que un «no» seguido de otro dato del mismo tipo es una corrección. Probado con negaciones reales, que no se tocan.
 
 ## 5. Pasos que tiene que hacer una persona

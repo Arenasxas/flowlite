@@ -135,7 +135,7 @@ class FlowKeyboard : InputMethodService() {
         thread {
             try {
                 val raw = Groq.transcribe(this, Groq.wav(audio))
-                if (raw.isBlank()) { main.post { status.text = "No se escuchó nada" }; return@thread }
+                if (raw.isBlank() || Groq.promptEcho(this, raw)) { main.post { status.text = "No se escuchó nada" }; return@thread }
                 val out = if (sel.isNotEmpty()) Groq.command(this, raw, sel, app) else Groq.polish(this, raw, app)
                 main.post {
                     currentInputConnection?.commitText(if (sel.isEmpty()) "$out " else out, 1)

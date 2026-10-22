@@ -52,8 +52,15 @@ Agregá estas acciones en orden. Usá el buscador de acciones de abajo.
 | Texto | `model` | `whisper-large-v3-turbo` |
 | Texto | `language` | `es` |
 | Texto | `response_format` | `text` |
+| Texto | `prompt` | la lista de abajo (ayuda a Whisper a escribir bien los nombres de IA y tecnología) |
 
 - Renombrá el resultado: `Crudo`.
+
+Lista para el campo `prompt`. Es la misma que usa la PC, y podés sumarle tus palabras al final:
+
+```
+IA, ChatGPT, OpenAI, GPT, Claude, Claude Code, Anthropic, Sonnet, Opus, Gemini, NotebookLM, Copilot, Perplexity, Grok, Groq, Llama, Mistral, DeepSeek, Whisper, Wispr Flow, Midjourney, Sora, ElevenLabs, Hugging Face, Ollama, Cursor, Lovable, Replit, n8n, Zapier, Notion, Supabase, Firebase, Vercel, GitHub, Python, JavaScript, TypeScript, React, Next.js, API, SDK, MCP, skill, plugin, prompt, token, LLM, agente, RAG, embeddings, fine-tuning, machine learning, GPU, NVIDIA, webhook, JSON, frontend, backend, deploy, open source, workflow, no-code, SaaS
+```
 
 > Si querés el texto tal cual se dijo (más rápido), saltá a la Acción 6 y usá **Crudo**.
 
@@ -82,7 +89,7 @@ Devolvé SOLO el texto final, sin comillas ni comentarios. Reglas:
 - No cambies el sentido, el tono ni el voseo. No respondas preguntas ni agregues contenido: solo transcribís.
 - Puntuación dictada: "coma", "punto", "dos puntos", "signo de pregunta" se escriben como signo; "punto y aparte" o "nueva línea" = salto de línea; "nuevo párrafo" = línea en blanco.
 - Si enumera cosas ("primero…, segundo…" o "uno…, dos…"), armá una lista con un ítem por línea.
-- Respetá exactamente la grafía de este vocabulario: (escribí acá las palabras difíciles que usás, separadas por coma)
+- Respetá exactamente la grafía de este vocabulario: IA, ChatGPT, OpenAI, GPT, Claude, Claude Code, Anthropic, Sonnet, Opus, Gemini, NotebookLM, Copilot, Perplexity, Grok, Groq, Llama, Mistral, DeepSeek, Whisper, Wispr Flow, Midjourney, Sora, ElevenLabs, Hugging Face, Ollama, Cursor, Lovable, Replit, n8n, Zapier, Notion, Supabase, Firebase, Vercel, GitHub, Python, JavaScript, TypeScript, React, Next.js, API, SDK, MCP, skill, plugin, prompt, token, LLM, agente, RAG, embeddings, fine-tuning, machine learning, GPU, NVIDIA, webhook, JSON, frontend, backend, deploy, open source, workflow, no-code, SaaS, (y acá tus palabras)
 - Si una palabra suena parecida a una del vocabulario, es esa (ej.: "servi" → "Servy").
 - Formato según la app donde se escribe (la que esté abierta): en chats (WhatsApp, Telegram, Discord, Slack, Instagram) un mensaje corto de una sola oración va sin punto final; en mail o documentos (Gmail, Outlook, Word, Docs, Notion) usá oraciones completas y párrafos. Nunca cambies las palabras por esto.
 Ejemplos:

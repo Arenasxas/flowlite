@@ -60,14 +60,35 @@ export async function transcribeSegments(blob, start, prompt, avoid) {
     if (!text || (s.no_speech_prob || 0) > 0.6 || HALLUCINATIONS.test(text) || (s.compression_ratio || 0) > 2.4 ||
         (s.avg_logprob || 0) < -1.0 || junkText(text, avoid)) continue;
     if (out.length >= 2 && out[out.length - 1][1] === text && out[out.length - 2][1] === text) continue;
-    out.push([start + (s.start || 0), text]);
+    out.push([start + (s.start || 0), fixTech(text)]);
   }
   return out;
 }
 
 export async function polish(text) {
-  const vocab = store.get("vocab", []).join(", ");
-  return groqChat(fmt(P.polish, { vocab, app: "celular" }), text);
+  const own = store.get("vocab", []), have = new Set(own.map((w) => w.toLowerCase()));
+  const vocab = own.concat((P.tech_vocab || []).filter((w) => !have.has(w.toLowerCase()))).join(", ");
+  return fixTech(await groqChat(fmt(P.polish, { vocab, app: "celular" }), text));
+}
+
+/** Errores típicos de Whisper con nombres de IA y tecnología ("Cloud Code" → "Claude Code"). Lista en prompts.json. */
+let fixes = null;
+export function fixTech(text) {
+  fixes = fixes || (P.tech_fixes || []).map(([p, r]) => [new RegExp(`(?<![\\p{L}\\p{N}_])(?:${p})(?![\\p{L}\\p{N}_])`, "giu"), r]);
+  for (const [rx, r] of fixes) text = text.replace(rx, r);
+  return text;
+}
+
+/** Ayuda para Whisper en el dictado: primero IA y tecnología (si se corta, queda lo propio al final). */
+export function dictationPrompt() {
+  return (P.tech_vocab || []).concat(store.get("vocab", []).slice(-40)).join(", ");
+}
+
+/** Whisper con casi silencio a veces devuelve la lista de la ayuda. */
+export function promptEcho(text) {
+  const words = plainWords(text).split(" ").filter(Boolean);
+  const known = new Set(plainWords(dictationPrompt()).split(" "));
+  return words.length >= 3 && words.every((w) => known.has(w));
 }
 
 // ── Gemini ──

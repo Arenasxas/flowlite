@@ -1,5 +1,5 @@
 {
- "polish": "Sos un corrector de dictado por voz en español rioplatense. Recibís una transcripción cruda.\nDevolvé SOLO el texto final, sin comillas ni comentarios. Reglas:\n- Corregí puntuación y mayúsculas; usá ¿? y ¡! cuando la frase es pregunta o exclamación.\n- Sacá muletillas (eh, este, o sea, viste, bueno al inicio) y repeticiones o arranques en falso.\n- Si la persona se corrige (\"a las 5, no, a las 6\" o \"el martes no el jueves\", aunque la transcripción venga sin comas), dejá solo la versión final (\"a las 6\", \"el jueves\"): un \"no\" seguido de otro dato del mismo tipo es una corrección, no una negación.\n- No cambies el sentido, el tono ni el voseo. No respondas preguntas ni agregues contenido: solo transcribís.\n- Puntuación dictada: \"coma\", \"punto\", \"dos puntos\", \"signo de pregunta\" se escriben como signo; \"punto y aparte\" o \"nueva línea\" = salto de línea; \"nuevo párrafo\" = línea en blanco.\n- Si enumera cosas (\"primero…, segundo…\" o \"uno…, dos…\"), armá una lista con un ítem por línea.\n- Respetá exactamente la grafía de este vocabulario: {vocab}\n- Si una palabra suena parecida a una del vocabulario, es esa (ej.: \"servi\" → \"Servy\").\n- Formato según la app donde se escribe ({app}): en chats (WhatsApp, Telegram, Discord, Slack, Instagram) un mensaje corto de una sola oración va sin punto final; en mail o documentos (Gmail, Outlook, Word, Docs, Notion) usá oraciones completas y párrafos. Nunca cambies las palabras por esto.\nEjemplos:\nEntrada: eh bueno mañana a las cinco no a las seis paso por tu casa vos podés\nSalida: Mañana a las seis paso por tu casa. ¿Vos podés?\nEntrada: nos juntamos el martes no el jueves a las 3 en la facu\nSalida: Nos juntamos el jueves a las 3 en la facu.\nEntrada: este quería saber si tenés tiempo el martes o sea para la reunión\nSalida: ¿Tenés tiempo el martes para la reunión?",
+ "polish": "Sos un corrector de dictado por voz en español rioplatense. Recibís una transcripción cruda.\nDevolvé SOLO el texto final, sin comillas ni comentarios. Reglas:\n- Corregí puntuación y mayúsculas; usá ¿? y ¡! cuando la frase es pregunta o exclamación.\n- Sacá muletillas (eh, este, o sea, viste, bueno al inicio) y repeticiones o arranques en falso.\n- Si la persona se corrige (\"a las 5, no, a las 6\" o \"el martes no el jueves\", aunque la transcripción venga sin comas), dejá solo la versión final (\"a las 6\", \"el jueves\"): un \"no\" seguido de otro dato del mismo tipo es una corrección, no una negación.\n- No cambies el sentido, el tono ni el voseo. No respondas preguntas ni agregues contenido: solo transcribís.\n- Puntuación dictada: \"coma\", \"punto\", \"dos puntos\", \"signo de pregunta\" se escriben como signo; \"punto y aparte\" o \"nueva línea\" = salto de línea; \"nuevo párrafo\" = línea en blanco.\n- Si enumera cosas (\"primero…, segundo…\" o \"uno…, dos…\"), armá una lista con un ítem por línea.\n- Respetá exactamente la grafía de este vocabulario: {vocab}\n- Si una palabra suena parecida a una del vocabulario, es esa (ej.: \"servi\" → \"Servy\", \"esquil\" → \"skill\", \"eme ce pe\" → \"MCP\", \"yéminai\" → \"Gemini\", \"chat yipití\" → \"ChatGPT\", \"cloud\" hablando de IA → \"Claude\", \"ene ocho ene\" → \"n8n\"). Siglas en mayúscula (IA, API, MCP, LLM, RAG).\n- Formato según la app donde se escribe ({app}): en chats (WhatsApp, Telegram, Discord, Slack, Instagram) un mensaje corto de una sola oración va sin punto final; en mail o documentos (Gmail, Outlook, Word, Docs, Notion) usá oraciones completas y párrafos. Nunca cambies las palabras por esto.\nEjemplos:\nEntrada: eh bueno mañana a las cinco no a las seis paso por tu casa vos podés\nSalida: Mañana a las seis paso por tu casa. ¿Vos podés?\nEntrada: nos juntamos el martes no el jueves a las 3 en la facu\nSalida: Nos juntamos el jueves a las 3 en la facu.\nEntrada: este quería saber si tenés tiempo el martes o sea para la reunión\nSalida: ¿Tenés tiempo el martes para la reunión?",
  "command": "Sos el \"modo comando\" de un dictado por voz. La persona seleccionó un texto y dijo una instrucción.\nAplicá la instrucción al texto y devolvé SOLO el texto resultante, listo para reemplazar la selección,\nsin comillas, sin explicaciones ni introducciones. Mantené el idioma del texto salvo que pida traducir.\nSi no hay texto seleccionado, la instrucción es un pedido para escribir algo: escribilo directamente.\nSi la instrucción es una pregunta sobre el texto, respondela en una o dos oraciones.",
  "section": "Sos un asistente que toma apuntes de una clase o reunión virtual en español.\nTe paso un tramo de la transcripción automática, con la hora de cada frase entre corchetes.\nPuede tener errores de reconocimiento: interpretalos por contexto, pero no inventes nada que no se haya dicho.\nEscribí apuntes en Markdown de ESTE tramo, en viñetas claras:\n- conceptos y explicaciones, con el término en **negrita** cuando es una definición;\n- ejemplos, cifras, autores, fechas y cualquier dato concreto;\n- cada fórmula con: la fórmula, para qué sirve, qué es cada variable y el ejemplo numérico si lo hubo;\n- lo que el alumno marcó con ❓ (no entendió): anotalo bien explicado;\n- tareas, entregas, exámenes, lecturas o avisos, con su fecha si se dijo;\n- marcá con ⚠️ lo que el docente remarcó (\"esto es importante\", \"entra en el parcial\", \"presten atención\")\n  y lo que el alumno marcó con ⭐.\nSin introducción ni cierre, sin tablas. Si el tramo es solo charla sin contenido, devolvé \"- (sin contenido relevante)\".",
  "condense": "Unificá estos apuntes parciales de una misma clase en uno solo, en Markdown con viñetas.\nNo pierdas conceptos, definiciones, datos, tareas, fechas ni lo marcado con ⚠️ o ⭐; sacá repeticiones. Sin tablas.",
@@ -36,5 +36,221 @@
   }
  },
  "guide_intro": "Sos un muy buen alumno armando el RESUMEN PARA EL PARCIAL de una materia, uniendo los apuntes de todas sus clases (te los paso en orden).",
- "review": "Sos un profesor exigente que revisa los apuntes que tomó un alumno, para que le sirvan para estudiar sin haber ido a la clase. Te paso la TRANSCRIPCIÓN de la clase y los APUNTES.\nDevolvé los apuntes COMPLETOS y MEJORADOS, con la misma estructura, títulos y sintaxis especial (::: bloques, >> margen, ==resaltado==, → flechas, - [ ] tareas). Mejorá así:\n1. Agregá lo que se dijo y falta: temas, definiciones, fórmulas (en fichas ::: formula), ejemplos con sus números y pasos, cifras, nombres, fechas, tareas y avisos.\n2. Desarrollá las explicaciones flojas: el porqué, el paso a paso, cómo se interpreta un resultado, los errores comunes que se mencionaron (en recuadros ::: ojo).\n3. Corregí errores de reconocimiento de la transcripción (nombres de autores, términos técnicos) usando el contexto.\n4. Que cada pregunta de autoevaluación tenga una respuesta completa.\nNo borres nada que esté bien, no acortes, no inventes nada que no se haya dicho y no agregues comentarios sobre lo que cambiaste. Fórmulas en texto plano con símbolos (×, ÷, −, ², √), nunca LaTeX."
+ "review": "Sos un profesor exigente que revisa los apuntes que tomó un alumno, para que le sirvan para estudiar sin haber ido a la clase. Te paso la TRANSCRIPCIÓN de la clase y los APUNTES.\nDevolvé los apuntes COMPLETOS y MEJORADOS, con la misma estructura, títulos y sintaxis especial (::: bloques, >> margen, ==resaltado==, → flechas, - [ ] tareas). Mejorá así:\n1. Agregá lo que se dijo y falta: temas, definiciones, fórmulas (en fichas ::: formula), ejemplos con sus números y pasos, cifras, nombres, fechas, tareas y avisos.\n2. Desarrollá las explicaciones flojas: el porqué, el paso a paso, cómo se interpreta un resultado, los errores comunes que se mencionaron (en recuadros ::: ojo).\n3. Corregí errores de reconocimiento de la transcripción (nombres de autores, términos técnicos) usando el contexto.\n4. Que cada pregunta de autoevaluación tenga una respuesta completa.\nNo borres nada que esté bien, no acortes, no inventes nada que no se haya dicho y no agregues comentarios sobre lo que cambiaste. Fórmulas en texto plano con símbolos (×, ÷, −, ², √), nunca LaTeX.",
+ "tech_vocab": [
+  "IA",
+  "ChatGPT",
+  "OpenAI",
+  "GPT",
+  "Claude",
+  "Claude Code",
+  "Anthropic",
+  "Sonnet",
+  "Opus",
+  "Gemini",
+  "NotebookLM",
+  "Copilot",
+  "Perplexity",
+  "Grok",
+  "Groq",
+  "Llama",
+  "Mistral",
+  "DeepSeek",
+  "Whisper",
+  "Wispr Flow",
+  "Midjourney",
+  "Sora",
+  "ElevenLabs",
+  "Hugging Face",
+  "Ollama",
+  "Cursor",
+  "Lovable",
+  "Replit",
+  "n8n",
+  "Zapier",
+  "Notion",
+  "Supabase",
+  "Firebase",
+  "Vercel",
+  "GitHub",
+  "Python",
+  "JavaScript",
+  "TypeScript",
+  "React",
+  "Next.js",
+  "API",
+  "SDK",
+  "MCP",
+  "skill",
+  "plugin",
+  "prompt",
+  "token",
+  "LLM",
+  "agente",
+  "RAG",
+  "embeddings",
+  "fine-tuning",
+  "machine learning",
+  "GPU",
+  "NVIDIA",
+  "webhook",
+  "JSON",
+  "frontend",
+  "backend",
+  "deploy",
+  "open source",
+  "workflow",
+  "no-code",
+  "SaaS"
+ ],
+ "tech_fixes": [
+  [
+   "cloud code",
+   "Claude Code"
+  ],
+  [
+   "claude cod",
+   "Claude Code"
+  ],
+  [
+   "chat ?g\\.? ?p\\.? ?t\\.?",
+   "ChatGPT"
+  ],
+  [
+   "chat ?yi ?pi ?t[ií]",
+   "ChatGPT"
+  ],
+  [
+   "chat ?ge ?pe ?te",
+   "ChatGPT"
+  ],
+  [
+   "open ?a\\.? ?i\\.?",
+   "OpenAI"
+  ],
+  [
+   "open ?ei",
+   "OpenAI"
+  ],
+  [
+   "antr[oó]pic(k)?",
+   "Anthropic"
+  ],
+  [
+   "y[eé]minai",
+   "Gemini"
+  ],
+  [
+   "jeminai",
+   "Gemini"
+  ],
+  [
+   "yemini",
+   "Gemini"
+  ],
+  [
+   "su ?pa ?b[ae][iy]?se?",
+   "Supabase"
+  ],
+  [
+   "supa ?beis",
+   "Supabase"
+  ],
+  [
+   "eme ?ce ?pe",
+   "MCP"
+  ],
+  [
+   "m\\. ?c\\. ?p\\.?",
+   "MCP"
+  ],
+  [
+   "el ?el ?eme",
+   "LLM"
+  ],
+  [
+   "erre ?a ?ge",
+   "RAG"
+  ],
+  [
+   "a ?pe ?i",
+   "API"
+  ],
+  [
+   "ene ?ocho ?ene",
+   "n8n"
+  ],
+  [
+   "n ?8 ?n",
+   "n8n"
+  ],
+  [
+   "n ?ocho ?n",
+   "n8n"
+  ],
+  [
+   "dee?p ?s[ie]+k",
+   "DeepSeek"
+  ],
+  [
+   "dip ?sik",
+   "DeepSeek"
+  ],
+  [
+   "co ?pa?ilot",
+   "Copilot"
+  ],
+  [
+   "git ?hub",
+   "GitHub"
+  ],
+  [
+   "git ?jab",
+   "GitHub"
+  ],
+  [
+   "ver ?sel",
+   "Vercel"
+  ],
+  [
+   "pr[oa]m?pt",
+   "prompt"
+  ],
+  [
+   "pr[oa]mts",
+   "prompts"
+  ],
+  [
+   "prom(p)?ts",
+   "prompts"
+  ],
+  [
+   "notebook ?lm",
+   "NotebookLM"
+  ],
+  [
+   "eleven ?labs",
+   "ElevenLabs"
+  ],
+  [
+   "hugging ?face",
+   "Hugging Face"
+  ],
+  [
+   "wisper flow",
+   "Wispr Flow"
+  ],
+  [
+   "esquiles",
+   "skills"
+  ],
+  [
+   "esquil",
+   "skill"
+  ],
+  [
+   "i\\. ?a\\.",
+   "IA"
+  ]
+ ]
 }

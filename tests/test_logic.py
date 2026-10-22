@@ -122,3 +122,16 @@ assert "<h2>Siguiente tema</h2>" in h and h.index("</div>") < h.index("<h2>"), h
 assert '<img src="capturas/00065.jpg"' in h and "secreto" not in h.split("<figure>")[-1].split("</figure>")[0] + "x"[:0]
 assert '../../secreto.jpg' not in [x for x in h.split('"') if x.endswith(".jpg")], h
 print("Bloques/capturas OK")
+
+# Vocabulario de IA y tecnología: corrige lo típico de Whisper y no toca el español común
+for raw, want in [("instalé un servidor eme ce pe en Cloud Code", "instalé un servidor MCP en Claude Code"),
+                  ("lo armé con su pa base y chat GPT", "lo armé con Supabase y ChatGPT"),
+                  ("conectalo con n8n y subilo a git hub", "conectalo con n8n y subilo a GitHub"),
+                  ("probé deep seek y Copailot", "probé DeepSeek y Copilot"),
+                  ("armé una esquil nueva", "armé una skill nueva")]:
+    assert fl.fix_tech(raw) == want, (raw, fl.fix_tech(raw))
+for same in ["Subí las fotos a la nube y vemos el código", "mañana voy al súper, a pie", "la abuela va a misa",
+             "el prompt quedó bien", "nos vemos en el open de tenis", "vamos a la playa en enero"]:
+    assert fl.fix_tech(same) == same, (same, fl.fix_tech(same))
+assert fl.prompt_echo("ChatGPT, OpenAI, Claude, Gemini.") and not fl.prompt_echo("Abrí Claude y pedile el resumen")
+print("Vocabulario técnico OK")

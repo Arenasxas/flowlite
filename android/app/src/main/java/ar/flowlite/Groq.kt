@@ -45,13 +45,14 @@ object Groq {
         field("temperature", "0")
         val lang = prefs(ctx).getString("language", "es") ?: "es"
         if (lang != "auto") field("language", lang)
+        field("prompt", whisperHelp(ctx))
         out.write("--$b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\n".toByteArray())
         out.write(wav)
         out.write("\r\n--$b--\r\n".toByteArray())
         val c = open("/audio/transcriptions", key(ctx))
         c.setRequestProperty("Content-Type", "multipart/form-data; boundary=$b")
         c.outputStream.use { it.write(out.toByteArray()) }
-        return JSONObject(read(c)).optString("text").trim()
+        return fixTech(ctx, JSONObject(read(c)).optString("text").trim())
     }
 
     fun chat(ctx: Context, system: String, user: String, model: String = "openai/gpt-oss-20b"): String {
@@ -66,9 +67,48 @@ object Groq {
         return JSONObject(read(c)).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content").trim()
     }
 
+    private fun list(ctx: Context, name: String): List<String> {
+        prompt(ctx, "polish") // carga prompts.json
+        val a = prompts!!.optJSONArray(name) ?: return emptyList()
+        return (0 until a.length()).map { a.getString(it) }
+    }
+
+    private fun own(ctx: Context) = (prefs(ctx).getString("vocab", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    /** Ayuda para Whisper: primero IA y tecnología; si no entra todo, queda lo propio al final. */
+    fun whisperHelp(ctx: Context) = (list(ctx, "tech_vocab") + own(ctx).takeLast(40)).joinToString(", ").takeLast(800)
+
+    private var fixes: List<Pair<Regex, String>>? = null
+
+    /** Errores típicos de Whisper con nombres de IA y tecnología ("Cloud Code" → "Claude Code"). Lista en prompts.json. */
+    fun fixTech(ctx: Context, text: String): String {
+        val f = fixes ?: run {
+            prompt(ctx, "polish")
+            val a = prompts!!.optJSONArray("tech_fixes")
+            (0 until (a?.length() ?: 0)).map {
+                val pair = a!!.getJSONArray(it)
+                Regex("(?iu)(?<![\\p{L}\\p{N}_])(?:${pair.getString(0)})(?![\\p{L}\\p{N}_])") to pair.getString(1)
+            }.also { fixes = it }
+        }
+        var out = text
+        for ((rx, rep) in f) out = rx.replace(out, Regex.escapeReplacement(rep))
+        return out
+    }
+
+    /** Whisper con casi silencio a veces devuelve la lista de la ayuda. */
+    fun promptEcho(ctx: Context, text: String): Boolean {
+        fun words(s: String) = java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("[^a-z0-9 ]"), " ").split(" ").filter { it.isNotEmpty() }
+        val w = words(text)
+        val known = words(whisperHelp(ctx)).toSet()
+        return w.size >= 3 && known.containsAll(w)
+    }
+
     fun polish(ctx: Context, text: String, app: String): String {
-        val vocab = prefs(ctx).getString("vocab", "") ?: ""
-        return chat(ctx, prompt(ctx, "polish").replace("{vocab}", vocab).replace("{app}", app.ifEmpty { "celular" }), text)
+        val mine = own(ctx)
+        val have = mine.map { it.lowercase() }.toSet()
+        val vocab = (mine + list(ctx, "tech_vocab").filter { it.lowercase() !in have }).joinToString(", ")
+        return fixTech(ctx, chat(ctx, prompt(ctx, "polish").replace("{vocab}", vocab).replace("{app}", app.ifEmpty { "celular" }), text))
     }
 
     /** Igual que groq_command de la PC. */

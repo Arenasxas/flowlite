@@ -188,7 +188,25 @@ def watch_edits(dictated, notify):
 
 
 def whisper_prompt():
-    return (", ".join(VOCAB[-60:]) + ". " + CONFIG["prompt"])[-800:]
+    # primero las palabras de IA y tecnología: si no entra todo, se corta el principio y queda el vocabulario propio
+    return (", ".join(PROMPTS["tech_vocab"] + VOCAB[-40:]) + ". " + CONFIG["prompt"])[-800:]
+
+
+TECH_FIXES = [(re.compile(rf"(?<!\w)(?:{p})(?!\w)", re.I), r) for p, r in PROMPTS["tech_fixes"]]
+
+
+def fix_tech(text):
+    """Errores típicos de Whisper con nombres de IA y tecnología ("Cloud Code" → "Claude Code"). Lista en prompts.json."""
+    for rx, rep in TECH_FIXES:
+        text = rx.sub(rep, text)
+    return text
+
+
+def prompt_echo(text):
+    """Whisper con casi silencio a veces devuelve la lista de la ayuda: 3+ palabras y todas de esa lista."""
+    words = plain_words(text).split()
+    known = set(plain_words(" ".join(PROMPTS["tech_vocab"] + VOCAB)).split())
+    return len(words) >= 3 and set(words) <= known
 
 
 def stt_language():
@@ -225,7 +243,8 @@ def wav_bytes(audio):
 def groq_transcribe(audio):
     data = {"model": CONFIG["groq_stt_model"], "prompt": whisper_prompt(), "response_format": "json", **stt_language()}
     r = groq_post("/audio/transcriptions", files={"file": ("audio.wav", wav_bytes(audio), "audio/wav")}, data=data)
-    return r["text"].strip()
+    text = r["text"].strip()
+    return "" if prompt_echo(text) else fix_tech(text)
 
 
 POLISH = PROMPTS["polish"]
@@ -281,7 +300,8 @@ def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations
 
 
 def groq_polish(text, app=""):
-    return groq_chat(POLISH.format(vocab=", ".join(VOCAB), app=app or "desconocida"), text)
+    vocab = VOCAB + [w for w in PROMPTS["tech_vocab"] if w.lower() not in {v.lower() for v in VOCAB}]
+    return fix_tech(groq_chat(POLISH.format(vocab=", ".join(vocab), app=app or "desconocida"), text))
 
 
 COMMAND = PROMPTS["command"]
@@ -869,7 +889,7 @@ def groq_transcribe_segments(audio, prompt, avoid=frozenset()):
             continue  # silencio, frase inventada, bucle repetido o eco de la ayuda que le pasamos
         if len(out) >= 2 and out[-1][1] == text == out[-2][1]:
             continue  # Whisper repitiendo la misma frase en bucle
-        out.append((float(s.get("start", 0)), text))
+        out.append((float(s.get("start", 0)), fix_tech(text)))
     return out
 
 
