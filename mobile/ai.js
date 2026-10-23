@@ -68,7 +68,16 @@ export async function transcribeSegments(blob, start, prompt, avoid) {
 export async function polish(text) {
   const own = store.get("vocab", []), have = new Set(own.map((w) => w.toLowerCase()));
   const vocab = own.concat((P.tech_vocab || []).filter((w) => !have.has(w.toLowerCase()))).join(", ");
-  return fixTech(await groqChat(fmt(P.polish, { vocab, app: "celular" }), text));
+  let out = await groqChat(fmt(P.polish, { vocab, app: "celular" }), `<transcripcion>\n${text}\n</transcripcion>`);
+  out = out.replace(/<\/?transcripcion>/g, "").trim();
+  return fixTech(polishAnswered(text, out) ? text : out);
+}
+
+/** ¿El pulido respondió lo dictado en vez de corregirlo? (igual que polish_answered de la PC) */
+export function polishAnswered(raw, out) {
+  const nIn = raw.split(/\s+/).filter(Boolean).length, nOut = out.split(/\s+/).filter(Boolean).length;
+  const added = ["```", "**", "\n#"].filter((m) => out.includes(m) && !raw.includes(m));
+  return nOut > nIn * 1.35 + 6 || (added.length > 0 && nOut > nIn * 0.8 + 4);
 }
 
 /** Errores típicos de Whisper con nombres de IA y tecnología ("Cloud Code" → "Claude Code"). Lista en prompts.json. */

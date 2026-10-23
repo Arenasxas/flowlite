@@ -98,6 +98,7 @@ Se corren con `.venv\Scripts\python tests\<archivo>.py`. Cada una termina en «O
 | `test_notes.py` | Clase completa con audio, cortes de internet y rehacer | No |
 | `test_f2.py` | Tipos, micrófono, revisión, continuación de Gemini, PDF y clase sin terminar | No |
 | `test_paths.py`, `test_panel.py`, `test_gui.py`, `test_main.py` | Panel, ventanas y programa entero | No |
+| `test_class_screen.py` | Diálogo de inicio y ventana de clase en pantalla real: marcas, aviso de silencio, modo mini y terminado | No |
 | `test_panel_screen.py` | Capturas de la pantalla real. Hay que mirarlas, ver `docs/panel-criterios.md` | No |
 | `test_real_groq.py`, `test_real_notes.py`, `test_real_assist.py`, `test_real_long.py` | Contra Groq y Gemini de verdad. Leen las claves de `C:\FlowLite\.env` | Sí |
 
@@ -181,6 +182,17 @@ Con Google Drive, los apuntes aparecen solos en el celular para leerlos y repasa
 - **Sin transparencias ni sombras en Qt.** En Windows dejaban restos y parpadeos. Se usan bordes redondeados nativos (`native_round`).
 - **Bug del BOM.** El `vocabulary.json` original venía con BOM (una marca invisible al principio del archivo) y el programa no lo podía leer. Ahora se abre con `encoding="utf-8-sig"`.
 - **PDF con Chrome sin ventana** (y Edge si no hay Chrome), con un perfil temporal. Edge falla en silencio cuando tiene una actualización pendiente.
+- **El pulido nunca responde lo dictado.** Pasó una vez: se dictó un pedido para otra IA («dame los prompts exactos…») y el pulido pegó un instructivo de Node.js. Ahora:
+  - El texto va entre `<transcripcion>` y `</transcripcion>`, y la regla de `polish` aclara que no es un pedido.
+  - Si igual la salida sale mucho más larga o con código, negrita o títulos que no se dictaron, se usa el texto crudo (`polish_answered` en la PC, `polishAnswered` en la web, `Groq.answered` en Android).
+  - Probado con Groq real con pedidos de ese tipo: `tests/test_real_polish_guard.py`.
+- **Ventana de clase:** el mismo estilo que el panel. Tiene:
+  - Medidor de audio, y aviso si no llega sonido en 25 s.
+  - Contadores de ⭐ ❓ 📸 y palabras.
+  - Modo mini (Ctrl+M) para que no tape la clase.
+  - Atajos: Ctrl+1 importante, Ctrl+2 no entendí, Ctrl+3 captura, Ctrl+4 ayuda, Ctrl+P pausa.
+  - Al terminar, botones para abrir los apuntes, el PDF o la carpeta.
+  - El diálogo de inicio muestra las materias recientes con un toque. Si la reunión no dice el tema, el título queda vacío y se completa con uno sacado de la clase.
 - **Vocabulario de IA y tecnología** (`prompts.json → tech_vocab` y `tech_fixes`). Funciona en tres capas:
   - **`tech_vocab`:** unos 60 nombres (Claude, Gemini, MCP, skill, n8n…). Van en la ayuda de Whisper, que tiene ~800 caracteres; por eso no son más. También van en el pulido.
   - **`tech_fixes`:** reemplazos fijos de errores típicos («Cloud Code» → «Claude Code», «eme ce pe» → «MCP»). Se aplican en `fix_tech` (PC), `fixTech` (web) y `Groq.fixTech` (Android).

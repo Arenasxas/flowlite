@@ -108,7 +108,16 @@ object Groq {
         val mine = own(ctx)
         val have = mine.map { it.lowercase() }.toSet()
         val vocab = (mine + list(ctx, "tech_vocab").filter { it.lowercase() !in have }).joinToString(", ")
-        return fixTech(ctx, chat(ctx, prompt(ctx, "polish").replace("{vocab}", vocab).replace("{app}", app.ifEmpty { "celular" }), text))
+        val out = chat(ctx, prompt(ctx, "polish").replace("{vocab}", vocab).replace("{app}", app.ifEmpty { "celular" }),
+            "<transcripcion>\n$text\n</transcripcion>").replace(Regex("</?transcripcion>"), "").trim()
+        return fixTech(ctx, if (answered(text, out)) text else out)
+    }
+
+    /** ¿El pulido respondió lo dictado en vez de corregirlo? (igual que polish_answered de la PC) */
+    fun answered(raw: String, out: String): Boolean {
+        fun n(s: String) = s.split(Regex("\\s+")).count { it.isNotEmpty() }
+        val added = listOf("```", "**", "\n#").filter { it in out && it !in raw }
+        return n(out) > n(raw) * 1.35 + 6 || (added.isNotEmpty() && n(out) > n(raw) * 0.8 + 4)
     }
 
     /** Igual que groq_command de la PC. */

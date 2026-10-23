@@ -103,7 +103,10 @@ function ai(path, body) {
   if (path.includes("/chat/completions")) {
     const sys = body.messages[0].content, user = body.messages[1].content;
     let out = "- (tramo)";
-    if (sys.startsWith("Sos un corrector")) out = user.charAt(0).toUpperCase() + user.slice(1).replace(/^eh /i, "") + ".";
+    if (sys.startsWith("Sos un corrector")) {
+      const t = user.replace(/<\/?transcripcion>/g, "").trim().replace(/^eh /i, "");
+      out = `<transcripcion>\n${t.charAt(0).toUpperCase() + t.slice(1)}.\n</transcripcion>`; // a veces el modelo devuelve las marcas
+    }
     else if (sys.includes("compañero de banco")) out = "- ⚠️ TP 3 el jueves 23\n- Punto de equilibrio = CF \\(\\div\\) CMU";
     else if (sys.includes("proponé 2 preguntas")) out = "• ¿Se puede usar horas hombre?\n• ¿Qué pasa si cambia el precio?";
     else if (sys.startsWith("Respondé la pregunta")) out = "**PE** = CF ÷ CMU [Costos y Precios — 2026-10-17]";

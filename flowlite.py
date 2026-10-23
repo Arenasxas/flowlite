@@ -33,15 +33,15 @@ import pyperclip
 import pystray
 import requests
 from PySide6.QtCore import QObject, QPoint, QPointF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QRadialGradient
-from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QPainterPath, QRadialGradient, QShortcut
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
                                QFormLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMessageBox,
-                               QPlainTextEdit, QPushButton, QSplitter, QVBoxLayout, QWidget)
+                               QPlainTextEdit, QProgressBar, QPushButton, QSplitter, QTextBrowser, QVBoxLayout, QWidget)
 import sounddevice as sd
 import uiautomation as auto
 from PIL import Image, ImageDraw
 from types import SimpleNamespace
-from panel import QSS, MeetingToast, Panel, Relay
+from panel import C as PC, QSS, FlowLayout, MeetingToast, Panel, Relay, label, native_round, paper
 
 VERSION = "2.2"
 FROZEN = getattr(sys, "frozen", False)
@@ -299,9 +299,23 @@ def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations
     return out.strip()
 
 
+def polish_answered(raw, out):
+    """¿El pulido respondió lo dictado en vez de corregirlo? Pasa cuando se le dicta un pedido a otra IA
+    («dame los prompts exactos…» → pegaba un instructivo). Señales: mucho más largo, o formato que nadie dicta."""
+    n_in, n_out = len(raw.split()), len(out.split())
+    added = [m for m in ("```", "**", "\n#") if m in out and m not in raw]
+    return n_out > n_in * 1.35 + 6 or bool(added and n_out > n_in * 0.8 + 4)
+
+
 def groq_polish(text, app=""):
     vocab = VOCAB + [w for w in PROMPTS["tech_vocab"] if w.lower() not in {v.lower() for v in VOCAB}]
-    return fix_tech(groq_chat(POLISH.format(vocab=", ".join(vocab), app=app or "desconocida"), text))
+    out = groq_chat(POLISH.format(vocab=", ".join(vocab), app=app or "desconocida"),
+                    f"<transcripcion>\n{text}\n</transcripcion>")
+    out = re.sub(r"</?transcripcion>", "", out).strip()
+    if polish_answered(text, out):
+        print("El pulido respondió en vez de corregir: queda el texto dictado")
+        out = text
+    return fix_tech(out)
 
 
 COMMAND = PROMPTS["command"]
@@ -1369,6 +1383,7 @@ class ClassNotes:
             json.dump(self.prefs, f, ensure_ascii=False)
         self.keys = {"pc": ["pc"], "mic": ["mic"], "both": ["pc", "mic"]}[source]
         self.bufs = {k: [] for k in self.keys}
+        self.levels = {k: 0.0 for k in self.keys}  # volumen actual de cada fuente, para el medidor de la ventana
         self.lock = threading.Lock()
         self.stop_ev, self.pause_ev = threading.Event(), threading.Event()
         self.chunks = queue.Queue()
@@ -1396,6 +1411,7 @@ class ClassNotes:
             with dev.recorder(samplerate=SR, channels=1, blocksize=1600) as r:
                 while not self.stop_ev.is_set():
                     data = r.record(numframes=1600).reshape(-1)
+                    self.levels[key] = float(np.sqrt(np.mean(data ** 2))) if data.size else 0.0
                     if not self.pause_ev.is_set():
                         with self.lock:
                             self.bufs[key].append(data.astype(np.float32))
@@ -1689,52 +1705,198 @@ def subject_key(title):
     return re.sub(r"\b(clase|unidad|tema|parte)\b|\d+", " ", plain_words(t)).strip() or "general"
 
 
+CLASS_QSS = QSS + f"""
+QPushButton#seg {{ background: {PC['card2']}; border: 1px solid {PC['line']}; border-radius: 10px; padding: 8px 10px; }}
+QPushButton#seg:checked {{ background: rgba(139,92,246,0.22); border: 1px solid {PC['accent']}; color: white; font-weight: 600; }}
+QLineEdit#bigtitle {{ font-size: 16px; padding: 9px 12px; }}
+QLabel#pill {{ border-radius: 11px; padding: 3px 10px; font-size: 12px; font-weight: 700; }}
+QLabel#timer {{ font-size: 26px; font-weight: 700; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }}
+QLabel#section {{ color: {PC['muted']}; font-size: 11px; font-weight: 700; letter-spacing: 1px; }}
+QPushButton#act {{ padding: 8px 10px; }}
+QPushButton#danger {{ background: {PC['card2']}; border: 1px solid {PC['bad']}; font-weight: 600; }}
+QPushButton#danger:hover {{ background: rgba(248,113,113,0.18); }}
+QProgressBar#meter {{ max-height: 4px; min-height: 4px; }}
+QProgressBar#meter::chunk {{ background: {PC['ok']}; }}
+QLabel#helper {{ background: rgba(139,92,246,0.14); border: 1px solid {PC['accent']}; border-radius: 12px; padding: 10px; }}
+QSplitter::handle {{ background: transparent; }}
+QLabel#warnbox {{ background: rgba(251,191,36,0.12); border: 1px solid {PC['warn']}; border-radius: 10px; padding: 8px 10px; }}
+"""
+TYPE_ICONS = {"clase": "🎓", "reunion": "💼", "llamada": "📞", "charla": "🎤"}
+SOURCE_INFO = {"pc": ("🖥  Audio de la PC", "Lo que suena en la PC: Meet, Zoom, Teams, WhatsApp Web, YouTube."),
+               "mic": ("🎙  Micrófono", "Clase presencial, o alguien que habla al lado de la PC."),
+               "both": ("🎧  Ambos", "La clase y tu voz. Usá auriculares, así el micrófono no repite el audio de la PC.")}
+DETAILS = {"resumido": ("Resumido", "Lo esencial, para repasar rápido."),
+           "normal": ("Normal", "Apuntes completos con fichas, ejemplos y autoevaluación."),
+           "detallado": ("Muy detallado", "Como para estudiar sin haber ido a la clase.")}
+
+
+class Segmented(QWidget):
+    """Opciones de a una, como botones (más rápido de leer y tocar que un desplegable)."""
+
+    def __init__(self, options, on_change=None):
+        super().__init__()
+        self.group = QButtonGroup(self)
+        self.group.setExclusive(True)
+        self.keys = []
+        h = QHBoxLayout(self)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(6)
+        for key, text, tip in options:
+            b = QPushButton(text)
+            b.setObjectName("seg")
+            b.setCheckable(True)
+            b.setCursor(Qt.PointingHandCursor)
+            if tip:
+                b.setToolTip(tip)
+            self.group.addButton(b, len(self.keys))
+            self.keys.append(key)
+            h.addWidget(b, 1)
+        self.group.button(0).setChecked(True)
+        if on_change:
+            self.group.idToggled.connect(lambda i, on: on and on_change(self.keys[i]))
+
+    def currentData(self):
+        return self.keys[self.group.checkedId()]
+
+    def select(self, key):
+        self.group.button(self.keys.index(key) if key in self.keys else 0).setChecked(True)
+
+
+def styled_root(w):
+    w.setObjectName("root")
+    w.setAttribute(Qt.WA_StyledBackground, True)
+    w.setStyleSheet(CLASS_QSS)
+
+
+def recent_subjects(limit=6):
+    """Materias de las últimas clases (sin la fecha de la carpeta), la más reciente primero."""
+    seen, out = set(), []
+    try:
+        names = sorted(os.listdir(notes_root()), reverse=True)
+    except OSError:
+        return []
+    for n in names:
+        m = re.match(r"\d{4}-\d{2}-\d{2} \d{2}\.\d{2} - (.+?)(?: \(\d+\))?$", n)
+        if not m or generic_title(m.group(1)):
+            continue
+        # «Régimen Legal dia 22102026», «Costos — clase 8», «Estadística 20-10» → la materia sola
+        t = re.sub(r"\s*[—-]?\s*(clase \d+|(d[ií]a )?\d{1,2}[/.-]?\d{1,2}([/.-]?\d{2,4})?)\s*$", "", m.group(1),
+                   flags=re.I).strip() or m.group(1)
+        if subject_key(t) not in seen:
+            seen.add(subject_key(t))
+            out.append(t)
+        if len(out) >= limit:
+            break
+    return out
+
+
 class StartDialog(QDialog):
     def __init__(self, suggested, kind="clase"):
         super().__init__(None, Qt.WindowStaysOnTopHint)
         self.suggested_kind = kind
+        if generic_title(suggested) or plain_words(suggested) in ("google meet", "meet", "zoom", "microsoft teams", "teams"):
+            suggested = ""  # vacío: al terminar le pongo un título sacado de la clase
         self.setWindowTitle("FlowLite — tomar apuntes")
+        styled_root(self)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 18, 22, 18)
+        lay.setSpacing(8)
+        lay.addWidget(label("📝  Tomar apuntes", "h1"))
+        lay.addWidget(label("Grabo, transcribo en vivo y al terminar te armo un cuaderno para estudiar.", "muted", wrap=True))
+
+        lay.addSpacing(6)
+        lay.addWidget(label("MATERIA O TEMA", "section"))
         self.title = QLineEdit(suggested)
-        self.title.setPlaceholderText("Ej.: Costos y Precios — clase 8")
-        self.source = QComboBox()
-        for key, label in ClassNotes.SOURCES.items():
-            self.source.addItem(label, key)
-        self.source.setCurrentIndex(max(self.source.findData(load_state().get("notes_source", "pc")), 0))
-        form = QFormLayout(self)
-        form.addRow(QLabel("Graba la clase o llamada, la transcribe en vivo y al terminar te arma los apuntes.\n"
-                           "Usá auriculares si elegís «Ambos», así el micrófono no repite el audio de la PC."))
-        self.kind = QComboBox()
-        for key, label in NOTE_TYPES.items():
-            self.kind.addItem(label, key)
-        self.detail = QComboBox()
-        for key, label in (("resumido", "Resumido: para repasar rápido"), ("normal", "Normal: apuntes completos"),
-                           ("detallado", "Muy detallado: como para estudiar sin haber ido")):
-            self.detail.addItem(label, key)
+        self.title.setObjectName("bigtitle")
+        self.title.setPlaceholderText("Ej.: Régimen Legal. Si lo dejás vacío, le pongo un título sacado de la clase")
+        lay.addWidget(self.title)
+        recent = [s for s in recent_subjects() if subject_key(s) != subject_key(suggested)]
+        if recent:
+            chips = QWidget()
+            flow = FlowLayout()
+            chips.setLayout(flow)
+            for s in recent:
+                b = QPushButton(s)
+                b.setObjectName("chip")
+                b.setCursor(Qt.PointingHandCursor)
+                b.setToolTip("Usar esta materia (recuerda cómo querés sus apuntes)")
+                b.clicked.connect(lambda _=False, s=s: self.title.setText(s))
+                flow.addWidget(b)
+            lay.addWidget(chips)
+
+        lay.addSpacing(6)
+        lay.addWidget(label("QUÉ GRABAR", "section"))
+        self.source = Segmented([(k, t, d) for k, (t, d) in SOURCE_INFO.items()], self._source_hint)
+        self.source_hint = label("", "muted", wrap=True)
+        lay.addWidget(self.source)
+        lay.addWidget(self.source_hint)
+
+        lay.addSpacing(6)
+        lay.addWidget(label("TIPO DE APUNTE", "section"))
+        self.kind = Segmented([(k, f"{TYPE_ICONS.get(k, '📝')}  {re.split(r'[ ,/(]', v)[0]}", v) for k, v in NOTE_TYPES.items()])
+        lay.addWidget(self.kind)
+
+        lay.addSpacing(6)
+        lay.addWidget(label("DETALLE", "section"))
+        self.detail = Segmented([(k, t, d) for k, (t, d) in DETAILS.items()], self._detail_hint)
+        self.detail_hint = label("", "muted", wrap=True)
+        lay.addWidget(self.detail)
+        lay.addWidget(self.detail_hint)
+
+        self.extra_btn = QPushButton("＋  Indicaciones para la IA (opcional)")
+        self.extra_btn.setObjectName("ghost")
+        self.extra_btn.setCursor(Qt.PointingHandCursor)
+        self.extra_btn.clicked.connect(lambda: (self.extra.show(), self.extra_btn.hide(), self.extra.setFocus()))
         self.extra = QPlainTextEdit()
-        self.extra.setPlaceholderText("Opcional, se recuerda para esta materia. Ej.: «Poné siempre la fórmula con un "
-                                      "ejemplo numérico», «El prorrateo de la cátedra es por horas máquina», "
-                                      "«Comparame los métodos en una tabla».")
-        self.extra.setFixedHeight(70)
-        form.addRow("Materia o tema:", self.title)
-        form.addRow("Qué grabar:", self.source)
-        form.addRow("Tipo:", self.kind)
-        form.addRow("Detalle:", self.detail)
-        form.addRow("Cómo querés\nlos apuntes:", self.extra)
+        self.extra.setPlaceholderText("Se recuerda para esta materia. Ej.: «Poné siempre la fórmula con un ejemplo numérico», "
+                                      "«El prorrateo de la cátedra es por horas máquina», «Comparame los métodos en una tabla».")
+        self.extra.setFixedHeight(74)
+        lay.addWidget(self.extra_btn, 0, Qt.AlignLeft)
+        lay.addWidget(self.extra)
+
+        foot = QHBoxLayout()
+        foot.setContentsMargins(0, 10, 0, 0)
+        self.memo = label("", "muted")
+        foot.addWidget(self.memo, 1)
+        cancel = QPushButton("Cancelar")
+        cancel.clicked.connect(self.reject)
+        go = QPushButton("●  Empezar a grabar")
+        go.setObjectName("primary")
+        go.setDefault(True)
+        go.setCursor(Qt.PointingHandCursor)
+        go.clicked.connect(self.accept)
+        foot.addWidget(cancel)
+        foot.addWidget(go)
+        lay.addLayout(foot)
+
+        self.source.select(load_state().get("notes_source", "pc"))
+        self._source_hint(self.source.currentData())
         self.title.textChanged.connect(self.load_prefs)
         self.load_prefs()
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText("Empezar a grabar")
-        buttons.button(QDialogButtonBox.Cancel).setText("Cancelar")
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        form.addRow(buttons)
-        self.resize(540, 0)
+        self.resize(560, 0)
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        try:
+            native_round(self, PC["line"])
+        except Exception:
+            pass
+
+    def _source_hint(self, key):
+        self.source_hint.setText(SOURCE_INFO[key][1])
+
+    def _detail_hint(self, key):
+        self.detail_hint.setText(DETAILS[key][1])
 
     def load_prefs(self):
         p = load_state().get("notes_prefs", {}).get(subject_key(self.title.text()), {})
-        self.kind.setCurrentIndex(max(self.kind.findData(p.get("type", self.suggested_kind)), 0))
-        self.detail.setCurrentIndex(max(self.detail.findData(p.get("detail", "normal")), 0))
+        self.kind.select(p.get("type", self.suggested_kind))
+        self.detail.select(p.get("detail", "normal"))
+        self._detail_hint(self.detail.currentData())
         self.extra.setPlainText(p.get("extra", ""))
+        self.extra.setVisible(bool(p.get("extra")))
+        self.extra_btn.setVisible(not p.get("extra"))
+        self.memo.setText("✓ Usando lo que elegiste la última vez" if p else "Se recuerda para esta materia")
 
     def prefs(self):
         p = {"type": self.kind.currentData(), "detail": self.detail.currentData(), "extra": self.extra.toPlainText().strip()}
@@ -1745,77 +1907,165 @@ class StartDialog(QDialog):
 
 
 class ClassWindow(QWidget):
-    """Ventana de la clase en curso: tus notas arriba, la transcripción en vivo abajo."""
+    """Ventana de la clase en curso: estado y tiempo arriba, la transcripción en vivo, tus notas y los botones.
+    Modo mini: una barra chica que no tapa la clase."""
+    SILENCE_WARN = 25  # segundos sin sonido antes de avisar
 
     def __init__(self, notes, on_stop):
         super().__init__(None, Qt.WindowStaysOnTopHint)
-        self.notes, self.on_stop, self.paused, self.finished = notes, on_stop, False, False
+        self.notes, self.on_stop, self.paused, self.finished, self.mini = notes, on_stop, False, False, False
         self.setWindowTitle(f"FlowLite — {notes.title}")
-        self.header = QLabel()
-        self.header.setStyleSheet("font-size:15px;font-weight:600;color:#ab47bc")
-        self.status = QLabel("Escuchando… la transcripción aparece cada ~1 minuto.")
-        self.status.setWordWrap(True)
-        self.status.setStyleSheet("color:gray")
-        self.mine = QPlainTextEdit()
-        self.mine.setPlaceholderText("Tus notas (opcional): lo que escribas acá se suma a los apuntes con prioridad.")
-        self.live = QPlainTextEdit()
-        self.live.setReadOnly(True)
-        self.live.setPlaceholderText("Transcripción en vivo…")
-        split = QSplitter(Qt.Vertical)
-        for label, w in (("Mis notas", self.mine), ("Transcripción en vivo", self.live)):
-            box = QWidget()
-            lay = QVBoxLayout(box)
-            lay.setContentsMargins(0, 4, 0, 0)
-            lay.addWidget(QLabel(f"<b>{label}</b>"))
-            lay.addWidget(w)
-            split.addWidget(box)
-        self.mark_btn = QPushButton("⭐ Importante")
-        self.mark_btn.clicked.connect(self.mark)
-        self.cap_btn = QPushButton("📸 Captura")
-        self.cap_btn.setToolTip("Guarda lo que se ve en la pantalla (diapositiva, pizarrón): va a los apuntes explicado.")
-        self.cap_btn.clicked.connect(self.capture)
+        styled_root(self)
+        self.counts = {"mark": 0, "doubt": 0, "cap": 0}
+        self.quiet_since = time.time()
         self.line_times = []  # minuto en que empezaste a escribir cada línea de "Mis notas"
-        self.doubt_btn = QPushButton("❓ No entendí")
-        self.doubt_btn.setToolTip("Marca este momento: en los apuntes se explica mejor, en «Dudas para consultar».")
-        self.doubt_btn.clicked.connect(self.doubt)
-        self.help_btn = QPushButton("✨ Ayuda")
-        self.help_btn.setToolTip("¿Qué me perdí? (últimos 5 minutos) o una pregunta para hacerle al profe")
-        self.help_btn.clicked.connect(self.show_help_menu)
+
+        # ── cabecera ──
+        self.pill = label("● GRABANDO", "pill")
+        self.timer_lbl = label("00:00", "timer")
+        self.mini_btn = QPushButton("▁  Mini")
+        self.mini_btn.setObjectName("ghost")
+        self.mini_btn.setToolTip("Achica la ventana a una barra para que no tape la clase (Ctrl+M)")
+        self.mini_btn.clicked.connect(self.toggle_mini)
+        top = QHBoxLayout()
+        top.addWidget(self.pill, 0, Qt.AlignVCenter)
+        top.addWidget(self.timer_lbl, 0, Qt.AlignVCenter)
+        top.addStretch(1)
+        top.addWidget(self.mini_btn)
+        kind = notes.prefs.get("type", "clase")
+        self.title_lbl = label(f"{notes.title}", "h2", wrap=True)
+        self.meta = label(f"{TYPE_ICONS.get(kind, '📝')} {NOTE_TYPES.get(kind, 'Clase')} · "
+                          f"{SOURCE_INFO.get(notes.source, ('', ''))[0].strip()}", "muted")
+        self.meter = QProgressBar()
+        self.meter.setObjectName("meter")
+        self.meter.setRange(0, 100)
+        self.meter.setTextVisible(False)
+        self.status = label("Escuchando… la transcripción aparece cada ~1 minuto.", "muted", wrap=True)
+        self.warn = label("", "warnbox", wrap=True)
+        self.warn.hide()
         self.helper = QLabel()
+        self.helper.setObjectName("helper")
         self.helper.setWordWrap(True)
         self.helper.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.helper.setStyleSheet("background:rgba(139,92,246,0.14);border:1px solid #8b5cf6;border-radius:10px;padding:8px;")
         self.helper.hide()
         self.help_relay = Relay()
         self.help_relay.done.connect(self._help_done)
-        self.pause_btn = QPushButton("⏸ Pausar")
-        self.pause_btn.clicked.connect(self.toggle_pause)
-        self.stop_btn = QPushButton("⏹ Terminar y armar apuntes")
-        self.stop_btn.setStyleSheet("font-weight:600")
-        self.stop_btn.clicked.connect(self.stop)
-        self.open_btn = QPushButton("Abrir apuntes")
-        self.open_btn.hide()
+
+        # ── cuerpo ──
+        self.live = QTextBrowser()
+        self.live.setOpenExternalLinks(False)
+        self.live.setPlaceholderText("Acá aparece lo que se dice, cada ~1 minuto.")
+        self.mine = QPlainTextEdit()
+        self.mine.setPlaceholderText("Escribí lo que quieras. Cada línea queda con su minuto y va al margen de ese tema en los apuntes.")
+        self.body = QSplitter(Qt.Vertical)
+        self.body.setHandleWidth(10)
+        for title, w in (("TRANSCRIPCIÓN EN VIVO", self.live), ("MIS NOTAS", self.mine)):
+            box = paper()
+            v = QVBoxLayout(box)
+            v.setContentsMargins(0, 4, 0, 0)
+            v.setSpacing(6)
+            v.addWidget(label(title, "section"))
+            v.addWidget(w)
+            self.body.addWidget(box)
+        self.body.setSizes([380, 160])
+
+        # ── botones ──
+        def act(text, tip, fn, key=None, name="act"):
+            b = QPushButton(text)
+            b.setObjectName(name)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setToolTip(tip + (f"  ({key})" if key else ""))
+            b.clicked.connect(fn)
+            if key:
+                QShortcut(QKeySequence(key), self, fn)
+            return b
+        self.mark_btn = act("⭐ Importante", "Marca este momento: en los apuntes va destacado", self.mark, "Ctrl+1")
+        self.doubt_btn = act("❓ No entendí", "Marca este momento: en los apuntes se explica mejor, en «Dudas»", self.doubt, "Ctrl+2")
+        self.cap_btn = act("📸 Captura", "Guarda lo que se ve en la pantalla (diapositiva, pizarrón): va a los apuntes explicado",
+                           self.capture, "Ctrl+3")
+        self.help_btn = act("✨ Ayuda", "¿Qué me perdí? (últimos 5 minutos) o una pregunta para el profe", self.show_help_menu, "Ctrl+4")
+        self.pause_btn = act("⏸", "Pausar o seguir la grabación", self.toggle_pause, "Ctrl+P")
+        self.stop_btn = act("⏹ Terminar", "Termina de transcribir y arma los apuntes", self.stop, None, "primary")
+        QShortcut(QKeySequence("Ctrl+M"), self, self.toggle_mini)
+        self.actions = (self.mark_btn, self.doubt_btn, self.cap_btn, self.help_btn, self.pause_btn, self.stop_btn)
         row = QHBoxLayout()
-        for b in (self.mark_btn, self.doubt_btn, self.cap_btn, self.help_btn, self.pause_btn, self.stop_btn, self.open_btn):
-            row.addWidget(b)
+        row.setSpacing(6)
+        for b in self.actions:
+            row.addWidget(b, 0 if b is self.pause_btn else 1)
+
+        # ── al terminar ──
+        self.done_box = paper()
+        d = QHBoxLayout(self.done_box)
+        d.setContentsMargins(0, 0, 0, 0)
+        self.open_btn = QPushButton("📖 Abrir apuntes")
+        self.open_btn.setObjectName("primary")
+        self.pdf_btn = QPushButton("📄 PDF")
+        self.dir_btn = QPushButton("📁 Carpeta")
+        self.dir_btn.clicked.connect(lambda: os.startfile(self.notes.folder))
+        for b in (self.open_btn, self.pdf_btn, self.dir_btn):
+            d.addWidget(b, 1)
+        self.done_box.hide()
+
+        self.counter = label("", "muted")
         lay = QVBoxLayout(self)
-        lay.addWidget(self.header)
+        lay.setContentsMargins(18, 14, 18, 14)
+        lay.setSpacing(8)
+        lay.addLayout(top)
+        self.details = [self.title_lbl, self.meta, self.meter, self.status, self.warn, self.helper, self.body, self.counter]
+        lay.addWidget(self.title_lbl)
+        lay.addWidget(self.meta)
+        lay.addWidget(self.meter)
         lay.addWidget(self.status)
+        lay.addWidget(self.warn)
         lay.addWidget(self.helper)
-        lay.addWidget(split, 1)
+        lay.addWidget(self.body, 1)
+        lay.addWidget(self.counter)
         lay.addLayout(row)
-        self.resize(560, 640)
+        lay.addWidget(self.done_box)
+        self.resize(600, 680)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
-        self.timer.start(1000)
+        self.timer.start(250)
         self._tick()
         self.show()
 
+    def showEvent(self, e):
+        super().showEvent(e)
+        try:
+            native_round(self, PC["line"])
+        except Exception:
+            pass
+
+    def _pill(self, text, color):
+        self.pill.setText(text)
+        c = QColor(color)
+        self.pill.setStyleSheet(f"background:rgba({c.red()},{c.green()},{c.blue()},0.18);color:{color};border:1px solid {color};")
+
     def _tick(self):
+        if self.finished:
+            return
+        level = max(self.notes.levels.values(), default=0.0)
+        self.meter.setValue(int(min(level * 600, 100)))
         if self.notes.stop_ev.is_set():
             return
-        state = "⏸ En pausa" if self.paused else "● Grabando"
-        self.header.setText(f"{state} · {self.notes.title} · {clock(self.notes.elapsed())}")
+        self.timer_lbl.setText(clock(self.notes.elapsed()))
+        if self.paused:
+            self._pill("⏸ EN PAUSA", PC["warn"])
+        else:
+            self._pill("● GRABANDO", PC["bad"])
+            if level > 0.004:
+                self.quiet_since = time.time()
+                self.warn.setText("")
+                self.warn.hide()
+            elif time.time() - self.quiet_since > self.SILENCE_WARN and not self.mini:
+                src = {"pc": "de la PC", "mic": "del micrófono"}.get(self.notes.source, "")
+                self.warn.setText(f"🔇 No llega sonido {src} hace {int(time.time() - self.quiet_since)} s. "
+                                  + ("¿La clase suena por los parlantes o auriculares predeterminados de Windows?"
+                                     if self.notes.source != "mic" else "¿El micrófono predeterminado es el correcto?"))
+                self.warn.show()
+        words = sum(len(t.split()) for _, t in self.notes.segments)
+        self.counter.setText(f"⭐ {self.counts['mark']}   ❓ {self.counts['doubt']}   📸 {self.counts['cap']}   ·   "
+                             f"{words} palabras transcriptas")
         self.notes.my_notes = self.stamped_notes()
 
     def stamped_notes(self):
@@ -1832,6 +2082,19 @@ class ClassWindow(QWidget):
                 out.append(f"[{clock(self.line_times[i])}] {line.strip()}")
         return "\n".join(out)
 
+    def _log(self, text):
+        """Agrega líneas «[mm:ss] texto» a la transcripción: el minuto en gris y las marcas en color."""
+        bar = self.live.verticalScrollBar()
+        at_end = bar.value() >= bar.maximum() - 4
+        for line in text.splitlines():
+            m = re.match(r"\[([\d:]+)\]\s*(.*)", line)
+            t, body = (m.group(1), m.group(2)) if m else ("", line)
+            color = PC["warn"] if body.startswith("⭐") else PC["accent2"] if body.startswith(("❓", "📸")) else PC["text"]
+            self.live.append(f"<span style='color:{PC['muted']};font-family:Consolas'>{html.escape(t)}</span>&nbsp; "
+                             f"<span style='color:{color}'>{html.escape(body)}</span>")
+        if at_end:
+            bar.setValue(bar.maximum())
+
     def capture(self):
         self.hide()  # que la ventana de FlowLite no tape la diapositiva
         QTimer.singleShot(300, self._grab)
@@ -1841,20 +2104,31 @@ class ClassWindow(QWidget):
         screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
         try:
             sec = self.notes.capture(screen.grabWindow(0))
-            self.live.appendPlainText(f"[{clock(sec)}] 📸 captura guardada")
+            self.counts["cap"] += 1
+            self._log(f"[{clock(sec)}] 📸 captura guardada")
         except Exception as e:
             self.status.setText(f"No pude capturar la pantalla: {e}")
         self.show()
 
     def add_text(self, text):
-        self.live.appendPlainText(text)
+        self._log(text)
 
     def set_status(self, text):
         self.status.setText(text)
 
     def mark(self):
+        if self.notes.stop_ev.is_set():
+            return
         sec = self.notes.mark()
-        self.live.appendPlainText(f"[{clock(sec)}] ⭐ marcado")
+        self.counts["mark"] += 1
+        self._log(f"[{clock(sec)}] ⭐ marcado como importante")
+
+    def doubt(self):
+        if self.notes.stop_ev.is_set():
+            return
+        sec = self.notes.mark(doubt=True)
+        self.counts["doubt"] += 1
+        self._log(f"[{clock(sec)}] ❓ no entendí: se explica mejor en los apuntes")
 
     def show_help_menu(self):
         from PySide6.QtWidgets import QMenu
@@ -1864,6 +2138,8 @@ class ClassWindow(QWidget):
         m.exec(self.help_btn.mapToGlobal(self.help_btn.rect().topLeft()))
 
     def ask_help(self, kind):
+        if self.mini:
+            self.toggle_mini()
         self.helper.setText("✨ Pensando…")
         self.helper.show()
         segs = list(self.notes.segments)
@@ -1876,32 +2152,62 @@ class ClassWindow(QWidget):
         body = body.replace("<ul>", "<ul style='margin:2px 0 0 -18px'>")
         self.helper.setText(f"<b>✨ {title}</b><br>{body}" if ok else f"No pude ayudarte ahora: {text}")
 
-    def doubt(self):
-        sec = self.notes.mark(doubt=True)
-        self.live.appendPlainText(f"[{clock(sec)}] ❓ no entendí")
-
     def toggle_pause(self):
+        if self.notes.stop_ev.is_set():
+            return
         self.paused = not self.paused
         self.notes.pause(self.paused)
-        self.pause_btn.setText("▶ Reanudar" if self.paused else "⏸ Pausar")
+        self.pause_btn.setText("▶" if self.paused else "⏸")
+        self.quiet_since = time.time()
         self._tick()
+
+    def toggle_mini(self):
+        """Barra chica (tiempo + botones) o ventana completa."""
+        self.mini = not self.mini
+        for w in self.details:
+            w.setVisible(not self.mini and (w not in (self.warn, self.helper) or bool(w.text())))
+        self.mini_btn.setText("⤢  Ver todo" if self.mini else "▁  Mini")
+        short = {self.mark_btn: "⭐", self.doubt_btn: "❓", self.cap_btn: "📸", self.help_btn: "✨", self.stop_btn: "⏹"}
+        full = {self.mark_btn: "⭐ Importante", self.doubt_btn: "❓ No entendí", self.cap_btn: "📸 Captura",
+                self.help_btn: "✨ Ayuda", self.stop_btn: "⏹ Terminar"}
+        for b, t in (short if self.mini else full).items():
+            b.setText(t)
+        if self.mini:
+            self.full_geo = self.geometry()
+            self.setMinimumSize(0, 0)
+            self.resize(470, 1)
+        elif getattr(self, "full_geo", None):
+            self.setGeometry(self.full_geo)
 
     def stop(self):
         if self.notes.stop_ev.is_set():
             return
-        for b in (self.mark_btn, self.doubt_btn, self.cap_btn, self.help_btn, self.pause_btn, self.stop_btn):
+        if self.mini:
+            self.toggle_mini()
+        for b in self.actions:
             b.setEnabled(False)
-        self.header.setText(f"⏳ Armando apuntes · {self.notes.title} · {clock(self.notes.elapsed())}")
+        self.warn.hide()
+        self._pill("⏳ ARMANDO APUNTES", PC["accent2"])
         self.status.setText("Termino de transcribir y armo los apuntes. Puede tardar uno o dos minutos…")
         self.on_stop(self.stamped_notes())
 
     def done(self, path):
         self.finished = True
+        self.timer.stop()
+        self.meter.hide()
         if path:
-            self.header.setText(f"✅ Apuntes listos · {self.notes.title}")
-            self.status.setText(path)
+            self._pill("✅ LISTOS", PC["ok"])
+            self.status.setText("Los abrí en el navegador. También quedan en la carpeta de la clase.")
             self.open_btn.clicked.connect(lambda: os.startfile(path))
-            self.open_btn.show()
+            pdf = os.path.splitext(path)[0] + ".pdf"
+            self.pdf_btn.setEnabled(os.path.exists(pdf))
+            self.pdf_btn.clicked.connect(lambda: os.path.exists(pdf) and os.startfile(pdf))
+            for b in self.actions:
+                b.hide()
+            self.mini_btn.hide()
+            self.done_box.show()
+        else:
+            self._pill("⚠ SIN APUNTES", PC["warn"])
 
     def closeEvent(self, e):
         if self.finished:

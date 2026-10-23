@@ -135,3 +135,14 @@ for same in ["Subí las fotos a la nube y vemos el código", "mañana voy al sú
     assert fl.fix_tech(same) == same, (same, fl.fix_tech(same))
 assert fl.prompt_echo("ChatGPT, OpenAI, Claude, Gemini.") and not fl.prompt_echo("Abrí Claude y pedile el resumen")
 print("Vocabulario técnico OK")
+
+# El pulido no puede pegar una respuesta en vez de lo dictado (pasó el 22/10 con «dame los prompts exactos…»)
+dictado = "Si querés podés darme un prompt exacto para que ellos mismos lo instalen, así que dámelo o decime qué tengo que hacer yo."
+respuesta = ("Instala y configura los agentes paso a paso: 1. **Instala Node.js y npm** - Descarga la última versión LTS desde "
+             "https://nodejs.org. - Ejecuta el instalador y verifica con `node -v`.\n2. **Crea un proyecto**\n```bash\nmkdir agente-ia\n```")
+assert fl.polish_answered(dictado, respuesta)
+assert not fl.polish_answered(dictado, dictado.replace("Si querés", "Si querés,"))
+lista = "primero pan segundo leche tercero queso cuarto fideos quinto arroz sexto yerba séptimo café octavo azúcar"
+assert not fl.polish_answered(lista, "\n".join(f"{i}. {x}" for i, x in enumerate(
+    ["Pan", "Leche", "Queso", "Fideos", "Arroz", "Yerba", "Café", "Azúcar"], 1)))  # lista dictada larga: vale
+print("Guardia del pulido OK")

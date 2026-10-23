@@ -25,4 +25,9 @@ const SAME = ["Subí las fotos a la nube y vemos el código", "mañana voy al s�
 for (const [raw, want] of CASES) if (ai.fixTech(raw) !== want) throw new Error(`${raw} → ${ai.fixTech(raw)}`);
 for (const s of SAME) if (ai.fixTech(s) !== s) throw new Error(`cambió: ${s} → ${ai.fixTech(s)}`);
 if (!ai.promptEcho("ChatGPT, OpenAI, Claude, Gemini.") || ai.promptEcho("Abrí Claude y pedile el resumen")) throw new Error("eco");
+if (!ai.polishAnswered("Si querés podés darme un prompt exacto para que ellos mismos lo instalen, así que dámelo o decime qué tengo que hacer yo.",
+  "Instala y configura los agentes paso a paso: 1. **Instala Node.js y npm** - Descarga la última versión LTS desde https://nodejs.org. " +
+  "- Ejecuta el instalador y verifica con `node -v`.\n2. **Crea un proyecto**\n```bash\nmkdir agente-ia\n```"))
+  throw new Error("no detectó la respuesta");
+if (ai.polishAnswered("primero pan segundo leche tercero queso cuarto fideos", "1. Pan\n2. Leche\n3. Queso\n4. Fideos")) throw new Error("lista");
 console.log("FIX TECH OK");
