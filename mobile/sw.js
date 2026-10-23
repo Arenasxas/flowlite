@@ -1,7 +1,7 @@
 // Modo sin conexión: la app abre aunque no haya internet (grabar necesita internet para transcribir,
 // pero lo grabado queda guardado y se transcribe al volver la conexión).
 // Cambiar VERSION en cada publicación: la app avisa "Hay una versión nueva".
-const VERSION = "flowlite-2.2.2";
+const VERSION = "flowlite-2.2.3";
 const FILES = ["./", "index.html", "app.css", "app.js", "ai.js", "store.js", "drive.js", "record.js", "repaso.js", "config.js",
   "manifest.json", "icons/icon-192.png", "icons/icon-512.png", "shared/cuaderno.js", "shared/prompts.json", "shared/page.html"];
 
