@@ -186,6 +186,9 @@ Con Google Drive, los apuntes aparecen solos en el celular para leerlos y repasa
   - El texto va entre `<transcripcion>` y `</transcripcion>`, y la regla de `polish` aclara que no es un pedido.
   - Si igual la salida sale mucho más larga o con código, negrita o títulos que no se dictaron, se usa el texto crudo (`polish_answered` en la PC, `polishAnswered` en la web, `Groq.answered` en Android).
   - Probado con Groq real con pedidos de ese tipo: `tests/test_real_polish_guard.py`.
+- **Música de fondo fuera de la clase.** «Audio de la PC» graba todo lo que suena. Si hay un reproductor abierto (Spotify, Apple Music, Deezer, VLC…), `procloop.py` usa la captura por programa de Windows (10 2004 o más nuevo) para grabar todo **menos** ese programa. Si lo abrís a mitad de clase, lo detecta en ~15 s. Si Windows no la soporta, graba como antes. Se apaga con `CONFIG["notes_skip_music"]`.
+  - Pruebas: `tests/test_procloop_tone.py` (un tono casi inaudible desde otro proceso: incluido 11.000× el ruido, excluido ~5×) y `tests/test_procloop.py`.
+  - Si la música suena en el mismo navegador que la clase (por ejemplo, YouTube en otra pestaña), no se puede separar. Para eso las indicaciones de los apuntes piden ignorar letras de canciones, publicidad y audio ajeno (`tests/test_real_music.py`, con Gemini real: no se coló nada).
 - **Ventana de clase:** el mismo estilo que el panel. Tiene:
   - Medidor de audio, y aviso si no llega sonido en 25 s.
   - Contadores de ⭐ ❓ 📸 y palabras.

@@ -41,6 +41,7 @@ import sounddevice as sd
 import uiautomation as auto
 from PIL import Image, ImageDraw
 from types import SimpleNamespace
+import procloop
 from panel import C as PC, QSS, FlowLayout, MeetingToast, Panel, Relay, label, native_round, paper
 
 VERSION = "2.2"
@@ -60,7 +61,8 @@ CONFIG = {
     "learn_window": 60,
     "notes_llm_model": "openai/gpt-oss-120b",
     "gemini_model": "gemini-3.8-flash",
-    "notes_dir": os.path.join(HERE, "Apuntes"),  # no en Documentos: Defender (acceso controlado) bloquea programas sin firma
+    "notes_dir": os.path.join(HERE, "Apuntes"),
+    "notes_skip_music": True,  # «Audio de la PC» sin Spotify y otros reproductores (captura por programa de Windows)  # no en Documentos: Defender (acceso controlado) bloquea programas sin firma
     "notes_chunk_seconds": 60,
     "notes_section_minutes": 8,
 }
@@ -260,7 +262,7 @@ def groq_chat(system, user, model=None, timeout=30, tries=1, max_tokens=None):
     return r["choices"][0]["message"]["content"].strip()
 
 
-def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations=2):
+def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations=2, status=None):
     """Gemini (Google AI Studio). Ventana enorme: entra la transcripción entera de una clase de horas,
     y también puede mirar imágenes (capturas de diapositivas o del pizarrón). images: [(texto, bytes_jpg)].
     Si la respuesta se corta por largo (MAX_TOKENS), le pide que siga desde ahí hasta `continuations` veces."""
@@ -282,6 +284,9 @@ def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations
                 continue
             if r.status_code in (429, 500, 503) and i < tries - 1:
                 print(f"Gemini ocupado ({r.status_code}), reintento")
+                if status:
+                    status(f"Gemini está ocupado ahora (error {r.status_code}): reintento en {20 * (i + 1)} s "
+                           f"(intento {i + 2} de {tries})…")
                 time.sleep(20 * (i + 1))
                 continue
             if not r.ok:
@@ -293,6 +298,8 @@ def gemini_chat(system, user, max_tokens=8000, tries=4, images=(), continuations
         if cand.get("finishReason") != "MAX_TOKENS" or not piece:
             break
         print("Gemini se cortó por largo: le pido que siga")
+        if status:
+            status("La clase es larga: Gemini sigue escribiendo la parte que falta…")
         contents = contents[:1] + [{"role": "model", "parts": [{"text": out}]},
                                    {"role": "user", "parts": [{"text": "Seguí exactamente desde donde te cortaste, "
                                                                        "sin repetir nada y con el mismo formato."}]}]
@@ -1087,7 +1094,7 @@ def build_notes(folder, title, segments, marks, my_notes, sections=None, status=
                   for sec, rel in caps]
         big = 32000 if prefs.get("detail") == "detallado" else 16000
         try:
-            md = gemini_chat(system, user, max_tokens=big, images=images)
+            md = gemini_chat(system, user, max_tokens=big, images=images, status=status)
         except Exception as e:
             print("Gemini falló, sigo con Groq:", e)
         if md and prefs.get("detail") != "resumido":
@@ -1132,7 +1139,7 @@ def review_notes(md, segments, marks, doubts, my_notes, max_tokens, status=print
             + (f"NOTAS DEL ALUMNO:\n{my_notes.strip()}\n\n" if my_notes.strip() else "")
             + f"APUNTES A REVISAR:\n{md}")
     try:
-        better = gemini_chat(REVIEW, user, max_tokens=max_tokens)
+        better = gemini_chat(REVIEW, user, max_tokens=max_tokens, status=status)
     except Exception as e:
         print("La revisión falló, quedan los apuntes de la primera pasada:", e)
         return md
@@ -1383,7 +1390,8 @@ class ClassNotes:
             json.dump(self.prefs, f, ensure_ascii=False)
         self.keys = {"pc": ["pc"], "mic": ["mic"], "both": ["pc", "mic"]}[source]
         self.bufs = {k: [] for k in self.keys}
-        self.levels = {k: 0.0 for k in self.keys}  # volumen actual de cada fuente, para el medidor de la ventana
+        self.levels = {k: 0.0 for k in self.keys}
+        self.music_seen = set()  # volumen actual de cada fuente, para el medidor de la ventana
         self.lock = threading.Lock()
         self.stop_ev, self.pause_ev = threading.Event(), threading.Event()
         self.chunks = queue.Queue()
@@ -1400,21 +1408,61 @@ class ClassNotes:
         threading.Thread(target=self._transcriber, daemon=True).start()
 
     # ── grabación ──
+    def _push(self, key, data):
+        self.levels[key] = float(np.sqrt(np.mean(data ** 2))) if data.size else 0.0
+        if not self.pause_ev.is_set() and data.size:
+            with self.lock:
+                self.bufs[key].append(data.astype(np.float32))
+
+    def _record_pc_without(self, app):
+        """Audio de la PC menos el reproductor de música (Spotify…): la canción que escuchás no entra.
+        Vuelve cuando se termina la clase o se cierra/cambia el reproductor."""
+        cap = procloop.ProcessLoopback(app[0], exclude=True)
+        if app[1] not in self.music_seen:
+            self.music_seen.add(app[1])
+            self.on_status(f"🎵 {app[1]} está abierto: grabo el audio de la PC sin {app[1]}, así la música no entra en la clase.")
+        start, got, check = time.time(), 0, time.time()
+        try:
+            while not self.stop_ev.is_set():
+                data = cap.read()
+                # Windows no manda nada mientras no suena nada: relleno con silencio para no perder el reloj de la clase
+                gap = int((time.time() - start) * SR) - got - len(data) - SR // 5
+                if gap > 0:
+                    data = np.concatenate([np.zeros(gap, np.float32), data])
+                got += len(data)
+                self._push("pc", data)
+                if time.time() - check > 15:
+                    check = time.time()
+                    if procloop.music_app() != app:
+                        return
+        finally:
+            cap.close()
+
     def _record(self, key):
         ctypes.windll.ole32.CoInitializeEx(None, 0)  # COM multihilo en este hilo (WASAPI lo necesita)
         try:
             sc = soundcard()
-            if key == "pc":
-                dev = sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True)
-            else:
-                dev = sc.default_microphone()
-            with dev.recorder(samplerate=SR, channels=1, blocksize=1600) as r:
-                while not self.stop_ev.is_set():
-                    data = r.record(numframes=1600).reshape(-1)
-                    self.levels[key] = float(np.sqrt(np.mean(data ** 2))) if data.size else 0.0
-                    if not self.pause_ev.is_set():
-                        with self.lock:
-                            self.bufs[key].append(data.astype(np.float32))
+            while not self.stop_ev.is_set():
+                app = procloop.music_app() if key == "pc" and CONFIG["notes_skip_music"] else None
+                if app:
+                    try:
+                        self._record_pc_without(app)
+                        continue
+                    except Exception as e:  # Windows viejo o sin permiso: sigo como siempre (con la música)
+                        print("Captura sin música no disponible:", e)
+                        CONFIG["notes_skip_music"] = False
+                if key == "pc":
+                    dev = sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True)
+                else:
+                    dev = sc.default_microphone()
+                check = time.time()
+                with dev.recorder(samplerate=SR, channels=1, blocksize=1600) as r:
+                    while not self.stop_ev.is_set():
+                        self._push(key, r.record(numframes=1600).reshape(-1))
+                        if key == "pc" and CONFIG["notes_skip_music"] and time.time() - check > 15:
+                            check = time.time()
+                            if procloop.music_app():
+                                break  # se abrió un reproductor: paso a grabar sin él
         except Exception as e:
             print("Error grabando", key, e)
             with self.lock:
@@ -1719,6 +1767,7 @@ QProgressBar#meter {{ max-height: 4px; min-height: 4px; }}
 QProgressBar#meter::chunk {{ background: {PC['ok']}; }}
 QLabel#helper {{ background: rgba(139,92,246,0.14); border: 1px solid {PC['accent']}; border-radius: 12px; padding: 10px; }}
 QSplitter::handle {{ background: transparent; }}
+QPushButton:disabled {{ color: {PC['muted']}; background: {PC['card']}; border-color: {PC['card2']}; }}
 QLabel#warnbox {{ background: rgba(251,191,36,0.12); border: 1px solid {PC['warn']}; border-radius: 10px; padding: 8px 10px; }}
 """
 TYPE_ICONS = {"clase": "🎓", "reunion": "💼", "llamada": "📞", "charla": "🎤"}
@@ -2044,10 +2093,12 @@ class ClassWindow(QWidget):
     def _tick(self):
         if self.finished:
             return
+        if self.notes.stop_ev.is_set() or getattr(self, "build_start", None):
+            if getattr(self, "build_start", None):
+                self._pill(f"⏳ ARMANDO APUNTES · {clock(time.time() - self.build_start)}", PC["accent2"])
+            return
         level = max(self.notes.levels.values(), default=0.0)
         self.meter.setValue(int(min(level * 600, 100)))
-        if self.notes.stop_ev.is_set():
-            return
         self.timer_lbl.setText(clock(self.notes.elapsed()))
         if self.paused:
             self._pill("⏸ EN PAUSA", PC["warn"])
@@ -2186,18 +2237,30 @@ class ClassWindow(QWidget):
             self.toggle_mini()
         for b in self.actions:
             b.setEnabled(False)
+        self.warn.setText("")
         self.warn.hide()
-        self._pill("⏳ ARMANDO APUNTES", PC["accent2"])
-        self.status.setText("Termino de transcribir y armo los apuntes. Puede tardar uno o dos minutos…")
+        self.build_start = time.time()
+        self.meter.setRange(0, 0)  # barra en movimiento: está trabajando
+        self.timer.start(1000)
+        mins = self.notes.elapsed() / 60
+        low, high = max(1, round(mins / 30)), max(3, round(mins / 9))
+        self.status.setText("Termino de transcribir y armo los apuntes.")
+        self.warn.setText(f"⏱ Para una clase de {clock(self.notes.elapsed())} suele tardar entre {low} y {high} minutos "
+                          "(Gemini escribe, después revisa que no falte nada y arma el PDF). "
+                          "Podés cerrar esta ventana: te aviso cuando estén y los abro.")
+        self.warn.show()
+        self._tick()
         self.on_stop(self.stamped_notes())
 
     def done(self, path):
         self.finished = True
         self.timer.stop()
         self.meter.hide()
+        self.warn.hide()
+        took = f" en {clock(time.time() - self.build_start)}" if getattr(self, "build_start", None) else ""
         if path:
             self._pill("✅ LISTOS", PC["ok"])
-            self.status.setText("Los abrí en el navegador. También quedan en la carpeta de la clase.")
+            self.status.setText(f"Apuntes armados{took}. Los abrí en el navegador; también quedan en la carpeta de la clase.")
             self.open_btn.clicked.connect(lambda: os.startfile(path))
             pdf = os.path.splitext(path)[0] + ".pdf"
             self.pdf_btn.setEnabled(os.path.exists(pdf))
@@ -2515,7 +2578,8 @@ def main():
     def notes_status(text):
         if notes["win"]:
             notes["win"].set_status(text)
-        if not notes["win"] or not notes["win"].isVisible():
+        # con la ventana cerrada, solo los problemas (los pasos y reintentos llenarían de avisos)
+        if (not notes["win"] or not notes["win"].isVisible()) and text.startswith(("No pude", "Sin conexión")):
             tray.notify(text, "FlowLite")
 
     def notes_done(path):
