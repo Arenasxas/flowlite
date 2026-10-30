@@ -30,4 +30,6 @@ if (!ai.polishAnswered("Si querés podés darme un prompt exacto para que ellos 
   "- Ejecuta el instalador y verifica con `node -v`.\n2. **Crea un proyecto**\n```bash\nmkdir agente-ia\n```"))
   throw new Error("no detectó la respuesta");
 if (ai.polishAnswered("primero pan segundo leche tercero queso cuarto fideos", "1. Pan\n2. Leche\n3. Queso\n4. Fideos")) throw new Error("lista");
+if (!ai.whisperGaveUp("Gracias. Gracias. Gracias.", 76) || ai.whisperGaveUp("Sí, dale.", 2)) throw new Error("whisperGaveUp");
+if (ai.whisperGaveUp("Bueno mirá quiero que me armes un resumen de la clase de hoy con todos los temas", 30)) throw new Error("frase real");
 console.log("FIX TECH OK");

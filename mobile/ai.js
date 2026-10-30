@@ -93,6 +93,12 @@ export function dictationPrompt() {
   return (P.tech_vocab || []).concat(store.get("vocab", []).slice(-40)).join(", ");
 }
 
+/** Mucho audio y casi nada de texto: Whisper inventó («Gracias. Gracias.» en un minuto de casi silencio). */
+export function whisperGaveUp(text, seconds) {
+  const words = plainWords(text).split(" ").filter(Boolean);
+  return seconds > 15 && (new Set(words).size <= 3 || words.length / seconds < 0.1);
+}
+
 /** Whisper con casi silencio a veces devuelve la lista de la ayuda. */
 export function promptEcho(text) {
   const words = plainWords(text).split(" ").filter(Boolean);

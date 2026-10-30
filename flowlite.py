@@ -337,15 +337,37 @@ SR = 16000
 FILLERS = re.compile(r"\b(eh+|em+|este\.\.\.|mmm+|ehm+)\b[,.]?\s*", re.IGNORECASE)
 
 
+MIC_SILENT = 0.002  # pico por debajo de esto no es voz: micrófono apagado, silenciado o desenchufado
+NO_SOUND = ("No llega sonido del micrófono. Revisá la tecla de silenciar micrófono de la notebook, que esté enchufado, "
+            "y cuál está elegido en Configuración → Sistema → Sonido.")
+
+
+def mic_silent(audio):
+    return audio.size > 0 and float(np.abs(audio).max()) < MIC_SILENT
+
+
+def whisper_gave_up(text, seconds):
+    """Mucho audio y casi nada de texto: Whisper inventó («Gracias. Gracias. Gracias.» en 76 s de casi silencio)."""
+    words = plain_words(text).split()
+    return seconds > 15 and (len(set(words)) <= 3 or len(words) / seconds < 0.1)
+
+
 class Recorder:
-    def __init__(self):
+    def __init__(self, on_silent=None):
         self.frames = []
         self.stream = None
         self.level = 0.0
+        self.on_silent, self.was_silent = on_silent, False
 
     def _on_audio(self, data, *_):
         self.frames.append(data.copy())
         self.level = float(np.sqrt(np.mean(data ** 2)))
+        self.peak = max(self.peak, float(np.abs(data).max()))
+        self.samples += len(data)
+        if self.samples >= 4 * SR and self.peak < MIC_SILENT and not self.warned:
+            self.warned = self.was_silent = True
+            if self.on_silent:  # fuera del hilo de audio
+                threading.Thread(target=self.on_silent, daemon=True).start()
 
     def cancel(self):
         self.stop()
@@ -353,6 +375,14 @@ class Recorder:
 
     def start(self):
         self.frames = []
+        self.peak, self.samples, self.warned = 0.0, 0, False
+        if self.was_silent:  # quizá enchufaste otro micrófono: la lista de dispositivos queda vieja hasta reiniciarla
+            self.was_silent = False
+            try:
+                sd._terminate()
+                sd._initialize()
+            except Exception as e:
+                print("No pude volver a buscar micrófonos:", e)
         self.stream = sd.InputStream(samplerate=SR, channels=1, dtype="float32", callback=self._on_audio)
         self.stream.start()
 
@@ -2377,7 +2407,7 @@ def main():
     CONFIG["language"] = setting("language")
     if load_state().get("notes_dir"):  # carpeta elegida en Ajustes (p. ej. Google Drive para sincronizar con el celular)
         CONFIG["notes_dir"] = load_state()["notes_dir"]
-    rec, hist = Recorder(), History()
+    rec, hist = Recorder(on_silent=lambda: tray.notify(NO_SOUND, "FlowLite")), History()
     bridge = Bridge()
     orb = Orb(level=lambda: rec.level)
     bridge.state.connect(orb.set)
@@ -2426,7 +2456,13 @@ def main():
             t0 = time.time()
             status = "pegado"
             try:
+                if mic_silent(audio):
+                    raise RuntimeError(NO_SOUND)
                 text, engine = transcribe(audio)
+                if whisper_gave_up(text, seconds):
+                    print("Whisper devolvió casi nada para tanto audio:", text)
+                    raise RuntimeError("no se entendió el audio (¿micrófono muy bajo?). "
+                                       "No pegué nada: el audio quedó guardado en el historial para Reintentar.")
                 if text and cmd and GROQ_KEY:
                     selected, old_clip = copy_selection()
                     text = groq_command(text, selected, app_name)
@@ -2460,7 +2496,7 @@ def main():
                 print(f"[{engine} {seconds:.1f}s audio → {time.time() - t0:.1f}s] {text}")
             except Exception as e:
                 print("Error procesando el dictado:", e)
-                tray.notify(f"No pude procesar el dictado: {e}", "FlowLite")
+                tray.notify(str(e) if str(e) == NO_SOUND else f"No pude procesar el dictado: {e}", "FlowLite")
                 rid = hist.add(seconds, f"No se pudo procesar ({str(e)[:120]})", app_name, "error")
                 try:  # se guarda el audio para el botón «Reintentar» del panel
                     os.makedirs(os.path.join(HERE, "pendientes"), exist_ok=True)

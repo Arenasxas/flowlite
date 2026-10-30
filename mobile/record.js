@@ -177,9 +177,11 @@ export class QuickRecorder {
     this.rec = new MediaRecorder(this.stream, pickMime() ? { mimeType: pickMime() } : {});
     this.rec.ondataavailable = (e) => e.data.size && this.parts.push(e.data);
     this.rec.start();
+    this.started = Date.now();
   }
 
   stop() {
+    this.seconds = (Date.now() - this.started) / 1000;
     return new Promise((ok) => {
       this.rec.onstop = () => {
         this.stream.getTracks().forEach((t) => t.stop());

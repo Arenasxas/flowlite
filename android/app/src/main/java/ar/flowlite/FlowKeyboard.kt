@@ -129,12 +129,19 @@ class FlowKeyboard : InputMethodService() {
         mic.text = "🎙 Mantené y hablá"
         val audio = synchronized(pcm) { pcm.toByteArray() }
         if (audio.size < 16000 * 2 / 2) { status.text = "Muy corto: mantené apretado mientras hablás"; return } // < 0,5 s
+        if (Groq.rms(audio) < 8) { status.text = "🔇 No llega sonido del micrófono"; return } // Whisper inventaría texto
         val sel = selected()
         val app = currentInputEditorInfo?.packageName ?: ""
         status.text = "Escribiendo…"
         thread {
             try {
                 val raw = Groq.transcribe(this, Groq.wav(audio))
+                val secs = audio.size / 32000.0
+                val distinct = raw.lowercase().split(Regex("\\W+")).filter { it.isNotEmpty() }
+                if (secs > 15 && (distinct.toSet().size <= 3 || distinct.size / secs < 0.1)) {
+                    main.post { status.text = "No se entendió el audio: ¿micrófono muy bajo?" }
+                    return@thread
+                }
                 if (raw.isBlank() || Groq.promptEcho(this, raw)) { main.post { status.text = "No se escuchó nada" }; return@thread }
                 val out = if (sel.isNotEmpty()) Groq.command(this, raw, sel, app) else Groq.polish(this, raw, app)
                 main.post {

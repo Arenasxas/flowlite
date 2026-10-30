@@ -146,3 +146,16 @@ lista = "primero pan segundo leche tercero queso cuarto fideos quinto arroz sext
 assert not fl.polish_answered(lista, "\n".join(f"{i}. {x}" for i, x in enumerate(
     ["Pan", "Leche", "Queso", "Fideos", "Arroz", "Yerba", "Café", "Azúcar"], 1)))  # lista dictada larga: vale
 print("Guardia del pulido OK")
+
+# Micrófono sin sonido: no se manda a Whisper, y si Whisper inventa («Gracias. Gracias. Gracias.» en 76 s) no se pega
+import numpy as np
+assert fl.mic_silent(np.full(16000, 0.0003, np.float32)) and not fl.mic_silent(0.05 * np.sin(np.arange(16000) / 5, dtype=np.float32))
+assert fl.whisper_gave_up("Gracias. Gracias. Gracias.", 76.4) and not fl.whisper_gave_up("Sí, dale.", 1.3)
+assert not fl.whisper_gave_up("Quiero que busques cómo mejorar la señal del wifi sin cambiar de plan de internet", 33)
+r = fl.Recorder(on_silent=lambda: avisos.append(1))
+avisos, r.peak, r.samples, r.warned = [], 0.0, 0, False
+for _ in range(45):
+    r._on_audio(np.full((1600, 1), 0.0003, np.float32))
+import time as _t; _t.sleep(0.1)
+assert avisos == [1] and r.was_silent, avisos
+print("Micrófono sin sonido OK")

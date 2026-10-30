@@ -401,6 +401,10 @@ function renderDictar() {
       const blob = await r.stop();
       let text = (await ai.transcribe(blob, { prompt: ai.dictationPrompt() })).text.trim();
       text = ai.promptEcho(text) ? "" : ai.fixTech(text);
+      if (ai.whisperGaveUp(text, r.seconds)) {
+        text = "";
+        toast("No se entendió el audio: revisá que el micrófono del celular no esté tapado ni silenciado.", 6000);
+      }
       if (text.split(/\s+/).length > 3) text = await ai.polish(text).catch(() => text);
       if (text) {
         store.set("dictados", [{ text, at: Date.now() }, ...hist].slice(0, 50));
